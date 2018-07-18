@@ -63,6 +63,7 @@ local eventTable = { -- Listen to these events
 	["PLAYER_EQUIPMENT_CHANGED"] = true, -- Something swapped or changed?
 	["SOCKET_INFO_UPDATE"] = true, -- Relics or Gems added maybe?
 	["ARTIFACT_RELIC_FORGE_UPDATE"] = true, -- Upgrade with Netherlight Crusible
+	--["PLAYER_AVG_ITEM_LEVEL_UPDATE"] = true, -- Itemlevel changed?
 }
 local offhandArtifacts = { -- Artifacts that are Offhand items... Why would anyone think this was a good idea?
 	[128289] = true, -- Protection Warrior, MH 128288
@@ -428,7 +429,7 @@ local function OnEvent(self, event, ...) -- Event handler
 		end
 
 	elseif eventTable[event] then
-		if (...) == 16 or (...) == 17 then
+		if (...) == 16 or (...) == 17 or event == "ARTIFACT_UPDATE" or event == "ARTIFACT_RELIC_FORGE_UPDATE" then
 			equipped[16] = nil
 			equipped[17] = nil
 		end
