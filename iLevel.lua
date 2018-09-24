@@ -1,6 +1,6 @@
 local ADDON_NAME = ...
-local _G = getfenv(0)
-local ChatFrame1, CreateFrame, tostring = _G.ChatFrame1, _G.CreateFrame, _G.tostring
+local _G = _G
+local ChatFrame1, CreateFrame, tostring, math = _G.ChatFrame1, _G.CreateFrame, _G.tostring, _G.math
 local GetInventoryItemLink, GetItemGem, GetItemInfo = _G.GetInventoryItemLink, _G.GetItemGem, _G.GetItemInfo
 local FONT_COLOR_CODE_CLOSE, NORMAL_FONT_COLOR_CODE = _G.FONT_COLOR_CODE_CLOSE, _G.NORMAL_FONT_COLOR_CODE
 local ITEM_QUALITY_COLORS, LE_ITEM_QUALITY_ARTIFACT = _G.ITEM_QUALITY_COLORS, _G.LE_ITEM_QUALITY_ARTIFACT
@@ -20,21 +20,80 @@ local DBDefaults = { -- Default settings for new users
 local socketsTable = { -- These bonusIDs should be sockets
 	-- /dump string.split(":", GetInventoryItemLink("player", i))
 	-- /dump string.split(":", GetInventoryItemLink("target", 17))
-	-- WoD Sockets
-	[523] = true, -- Dungeon
-	[563] = true, -- Normal Raid
-	[564] = true, -- Heroic Raid
-	[565] = true, -- Mythic Raid
-	-- Prismatic Sockets in 7.0, how many are there?
-	[1808] = true, -- From Heroic Dungeons and T19 Normal Raids
-	[3458] = true, -- Legendary item with socket?
-	--[[ Are these sockets?
 	[3] = true,
+	-- WoD ?
 	[497] = true,
+	[523] = true,
+	[563] = true,
+	[564] = true,
+	[565] = true,
 	[572] = true,
-	[3386] = true, -- From Vendor -- Not socket?
-	[3459] = true, -- Legendary stuff, but no idea what this does
-	]]--
+	[608] = true,
+	[715] = true,
+	[716] = true,
+	[717] = true,
+	[718] = true,
+	[719] = true,
+	[721] = true,
+	[722] = true,
+	[723] = true,
+	[724] = true,
+	[725] = true,
+	[726] = true,
+	[727] = true,
+	[728] = true,
+	[729] = true,
+	[730] = true,
+	[731] = true,
+	[732] = true,
+	[733] = true,
+	[734] = true,
+	[735] = true,
+	[736] = true,
+	[737] = true,
+	[738] = true,
+	[739] = true,
+	[740] = true,
+	[741] = true,
+	[742] = true,
+	[743] = true,
+	[744] = true,
+	[745] = true,
+	[746] = true,
+	[747] = true,
+	[748] = true,
+	[749] = true,
+	[750] = true,
+	[751] = true,
+	[752] = true,
+	-- Legion ?
+	[1808] = true,
+	[3475] = true,
+	[3522] = true,
+	[4231] = true,
+	[4802] = true,
+
+	[3386] = true, -- Vendor stuff?
+	[3458] = true, -- Legendary
+	[3459] = true, -- 132410
+	[3630] = true, -- 152626
+	-- BfA ?
+	[3364] = true, -- ???
+	[3366] = true, -- ???
+	[3372] = true,
+	--[4926] = true,
+	--[4927] = true,
+	--[4928] = true,
+}
+local enchantsTable = {
+	--[2] = true, -- Neck -- Legion
+	--[3] = true, -- Shoulders -- Legion
+	[10] = true, -- Hands -- BfA
+	[11] = true, -- Finger0 -- Legion, BfA
+	[12] = true, -- Finger1 -- Legion, BfA
+	--[15] = true, -- Back -- Legion
+	[16] = true, -- MainHand -- BfA
+	[17] = true, -- OffHand -- BfA
 }
 local slotTable = { -- Slot names in right order
 	"HeadSlot",
@@ -162,12 +221,18 @@ local function _updateItems(unit, frame) -- Update the itemlevel strings on Fram
 				end
 
 				if db.setting == 2 then
-					if i == 2 or i == 3 or i == 11 or i == 12 or i == 15 then
-						-- Neck, Shoulders, Finger0, Finger1, Chest
+					if enchantsTable[i] then
 						if enchantID and enchantID > 0 then
 							enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30|t"
 						elseif itemLink then
-							enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30:221:0:0|t"
+							if i == 17 then -- Check if OffHand item is a Weapon
+								local _, _, _, _, _, _, _, _, _, _, _, itemClassID, itemSubClassID = GetItemInfo(itemLink)
+								if itemClassID == 2 then -- Weapon instead of Shield or Offhand -item, can be enchanted
+									enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30:221:0:0|t"
+								end
+							else
+								enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30:221:0:0|t"
+							end
 						end
 					end
 
@@ -184,7 +249,7 @@ local function _updateItems(unit, frame) -- Update the itemlevel strings on Fram
 								gemString = gemString.."|TInterface\\ItemSocketingFrame\\UI-EmptySocket-Red:0:0:0:0:32:32:2:30:2:30|t"
 								equipped[i] = nil -- Might be just missing data from server, try to update next time
 							end
-						end							
+						end
 					elseif numBonuses and numBonuses > 0 then
 						for b = 1, numBonuses do
 							local bonusID = select(b, strsplit(":", affixes))
@@ -226,7 +291,7 @@ local function _updateItems(unit, frame) -- Update the itemlevel strings on Fram
 
 				if db.setting == 2 then
 					if (i == 16 or i == 17) then
-						finalString = strtrim(gemString .. "\n" .. strtrim(finalString))
+						finalString = strtrim(enchantString .. gemString .. "\n" .. strtrim(finalString))
 					elseif i <= 5 or i == 15 or i == 9 then -- Left side
 						if db.inside then
 							finalString = strtrim(enchantString .. gemString .. finalString)
@@ -255,11 +320,8 @@ local function _updateItems(unit, frame) -- Update the itemlevel strings on Fram
 				frame[16]:SetText(finalString)
 			end
 
-			if db.inside or (((i == 16 and not offhandArtifacts[itemID]) or (i == 17 and offhandArtifacts[itemID])) and gemString ~= "") then
-				frame[i]:SetWidth(_G.CharacterMainHandSlot:GetWidth() + 2)
-			else
-				frame[i]:SetWidth(frame[i]:GetStringWidth())
-			end
+			local w = math.max(_G.CharacterMainHandSlot:GetWidth() + 2, frame[i]:GetStringWidth())
+			frame[i]:SetWidth(w)
 		end
 	end
 
@@ -437,6 +499,8 @@ local function OnEvent(self, event, ...) -- Event handler
 
 	elseif event == "INSPECT_READY" then
 		_updateItems("target", g)
+	else -- COMBAT_RATING_UPDATE, ITEM_UPGRADE_MASTER_UPDATE, PLAYER_DAMAGE_DONE_MODS, PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE
+		_updateItems("player", f)
 	end
 end
 f:SetScript("OnEvent", OnEvent)
