@@ -21,69 +21,29 @@ local socketsTable = { -- These bonusIDs should be sockets
 	-- /dump string.split(":", GetInventoryItemLink("player", i))
 	-- /dump string.split(":", GetInventoryItemLink("target", 17))
 	[3] = true,
-	-- WoD ?
-	[497] = true,
-	[523] = true,
-	[563] = true,
-	[564] = true,
-	[565] = true,
-	[572] = true,
-	[608] = true,
-	[715] = true,
-	[716] = true,
-	[717] = true,
-	[718] = true,
-	[719] = true,
-	[721] = true,
-	[722] = true,
-	[723] = true,
-	[724] = true,
-	[725] = true,
-	[726] = true,
-	[727] = true,
-	[728] = true,
-	[729] = true,
-	[730] = true,
-	[731] = true,
-	[732] = true,
-	[733] = true,
-	[734] = true,
-	[735] = true,
-	[736] = true,
-	[737] = true,
-	[738] = true,
-	[739] = true,
-	[740] = true,
-	[741] = true,
-	[742] = true,
-	[743] = true,
-	[744] = true,
-	[745] = true,
-	[746] = true,
-	[747] = true,
-	[748] = true,
-	[749] = true,
-	[750] = true,
-	[751] = true,
-	[752] = true,
-	-- Legion ?
+	-- Observed results:
+	[1521] = true,
+	[1530] = true,
 	[1808] = true,
-	[3475] = true,
-	[3522] = true,
-	[4231] = true,
-	[4802] = true,
-
-	[3386] = true, -- Vendor stuff?
-	[3458] = true, -- Legendary
-	[3459] = true, -- 132410
-	[3630] = true, -- 152626
-	-- BfA ?
-	[3364] = true, -- ???
-	[3366] = true, -- ???
+	[3345] = true,
+	[3347] = true,
+	[3350] = true,
+	[3353] = true,
+	[3357] = true,
+	[3358] = true,
+	[3360] = true,
+	[3362] = true,
+	[3368] = true,
+	[3370] = true,
 	[3372] = true,
-	--[4926] = true,
-	--[4927] = true,
-	--[4928] = true,
+	[3373] = true,
+	[3378] = true,
+	[3401] = true,
+	[3521] = true,
+	[3583] = true,
+	[4086] = true,
+	[4802] = true,
+	[5278] = true,
 }
 local enchantsTable = {
 	--[2] = true, -- Neck -- Legion
@@ -311,7 +271,7 @@ local function _updateItems(unit, frame) -- Update the itemlevel strings on Fram
 			frame[i]:SetText(finalString)
 
 			if i == 17 and offhandArtifacts[itemID] then -- Fix Main Hand for Offhand Artifacts
-				finalString = tmpItemLevel
+				finalString = tmpItemLevel or ""
 
 				if db.color then
 					finalString = colorString .. finalString .. colorCloseString
@@ -499,8 +459,6 @@ local function OnEvent(self, event, ...) -- Event handler
 
 	elseif event == "INSPECT_READY" then
 		_updateItems("target", g)
-	else -- COMBAT_RATING_UPDATE, ITEM_UPGRADE_MASTER_UPDATE, PLAYER_DAMAGE_DONE_MODS, PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE
-		_updateItems("player", f)
 	end
 end
 f:SetScript("OnEvent", OnEvent)
