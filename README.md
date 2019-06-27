@@ -26,5 +26,3 @@ color - Change the coloring of the itemlevel texts between DEFAULT and RARITY co
 * NEW v1.3: Now shows also small green arrow next to items with unused itemlevel upgrades. Added this feature just to make my life easier with tracking item level upgrades between different item sets.
 
 ---
-
-**Please disable TradeSkillMaster before copy&pasting Lua errors to me, it makes the Lua error -reports almost impossible to read.**
