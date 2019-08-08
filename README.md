@@ -18,6 +18,7 @@ color - Change the coloring of the itemlevel texts between DEFAULT and RARITY co
 
 ---
 
+* NEW v2.0: Rewrote the addon. The addon should detect all sockets (except Azerite Essences) without hardcoding and the addon should also detect all enchants, but only shows missing enchants for the slots with BfA enchants.
 * NEW v1.18: Fixed Offhand Artifacts. Added Average itemlevel text for InspectFrame. Added option to color itemlevel texts with the color of itemrarity instead of default color.
 * NEW v1.15: Added option to anchor item levels inside the slot icons. Fixed few bugs and the addon should now update missing texts and socketed gems more often if the data wasn't available right away when PaperDollFrame was first opened.
 * NEW v1.13: Fixed the non-persistent setting bug and added support for Inspect-frame.
