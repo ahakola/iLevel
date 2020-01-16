@@ -1,4 +1,4 @@
-## Interface: 80200
+## Interface: 80300
 ## Author: Sanex (Arathor EU)
 ## Title: iLevel
 ## Version: @project-version@

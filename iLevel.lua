@@ -118,7 +118,7 @@ do -- Create and Anchor strings based on settings
 		for i = 1, 17 do
 			if i ~= 4 then
 				frame[i] = CreateFrame("Frame", nil, frame)
-				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline")
+				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") --"GameFontNormalOutline") -- Fix the '...' in some of the strings in some cases
 				frame[i]:SetAllPoints(s) -- Fontstring anchoring hack by SDPhantom https://www.wowinterface.com/forums/showpost.php?p=280136&postcount=6
 				frame[i].string = s; frame[i].link = true; frame[i].itemLevel = ""; frame[i].upgradeString = ""; frame[i].enchantString = ""; frame[i].socketString = ""; frame[i].finalString = "%1$s"
 			end
@@ -240,7 +240,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 
 		if unit and slotId ~= 4 and slotId <= 17 then
 			local link = GetInventoryItemLink(unit, slotId)
-			if link then -- We have a item
+			if link then -- We have an item
 				if frame[slotId].link == link then
 					return
 				else
