@@ -9,6 +9,8 @@ local DBDefaults = { -- Default settings for new users
 local f = CreateFrame("Frame", nil, _G.PaperDollFrame) -- iLevel number frame for Character
 f:RegisterEvent("ADDON_LOADED")
 
+MIN_PLAYER_LEVEL_FOR_ITEM_LEVEL_DISPLAY = 1 -- Enable itemlevel display for characters under level 90
+
 local function initDB(a, b) -- Check DB settings, Defaults-table, Settings-table
 	if type(a) ~= "table" then return {} end
 	if type(b) ~= "table" then b = {} end
@@ -54,7 +56,8 @@ do -- Create and Anchor strings based on settings
 			elseif slotId <= 14 then -- Right side
 				return "RIGHT", "LEFT", -xo, 0, "RIGHT", "MIDDLE"
 			else -- Weapon slots
-				return "BOTTOM", "TOP", 2, yo, "CENTER", "BOTTOM"
+				--return "BOTTOM", "TOP", 2, yo, "CENTER", "BOTTOM"
+				return "BOTTOM", "TOP", 2, yo, "CENTER", "MIDDLE" -- Try to fix weapon strings sometimes looking bit weird
 			end
 		end
 	end
@@ -118,7 +121,7 @@ do -- Create and Anchor strings based on settings
 		for i = 1, 17 do
 			if i ~= 4 then
 				frame[i] = CreateFrame("Frame", nil, frame)
-				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") --"GameFontNormalOutline") -- Fix the '...' in some of the strings in some cases
+				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline") -- Revert the previous fix, the smaller text size made it bit too hard to read the icons
 				frame[i]:SetAllPoints(s) -- Fontstring anchoring hack by SDPhantom https://www.wowinterface.com/forums/showpost.php?p=280136&postcount=6
 				frame[i].string = s; frame[i].link = true; frame[i].itemLevel = ""; frame[i].upgradeString = ""; frame[i].enchantString = ""; frame[i].socketString = ""; frame[i].finalString = "%1$s"
 			end
@@ -288,7 +291,8 @@ do -- Update saved item data per slot and refresh text strings at the same time
 
 					-- Fill the itemLevel-string
 					frame[slotId].string:SetFormattedText(frame[slotId].finalString, frame[slotId].itemLevel, frame[slotId].upgradeString, frame[slotId].enchantString, frame[slotId].socketString)
-					local w = math.max(frame[slotId].string:GetWidth(), frame[slotId].string:GetParent():GetWidth() + 2)
+					-- New fix for the '...' in some of the strings in some cases
+					local w = frame[slotId].string:GetStringWidth() + 5 --math.max(frame[slotId].string:GetWidth(), frame[slotId].string:GetParent():GetWidth() + 2)
 					frame[slotId].string:SetWidth(w)
 					
 					if unit ~= "player" then
