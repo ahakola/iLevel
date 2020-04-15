@@ -15,7 +15,7 @@ I know there are 13 of these addons in a dozen, but this is my version. While le
 inside - Change anchoring of the item levels between INSIDE and OUTSIDE of the slot icons.
 color - Change the coloring of the itemlevel texts between DEFAULT and RARITY coloring.
 tooltip - ENABLE/DISABLE show Enchant/Gem-tooltips.
-   - Works only when setting is %s2%s and anchor is set to %sOUTSIDE%s.
+   - Works only when setting is 2 and anchor is set to OUTSIDE.
 enchants [#] - ENABLE/DISABLE show missing Enchants for slot number #.
    - Ommit # to list slot numbers and their current settings.
 ```
