@@ -4,7 +4,27 @@ local g, db -- Inspect Frame itemLevels / Settings on how much we show, where we
 local DBDefaults = { -- Default settings for new users
 	setting = 2,
 	inside = false,
-	color = false
+	color = false,
+	tooltips = false,
+	enchantsTable = { -- Slots you can enchant in current xpack (aka the only ones worthwhile of your time)
+		[1] = false, -- Head
+		[2] = false, -- Neck
+		[3] = false, -- Shoulder
+		[4] = false, -- Shirt
+		[5] = false, -- Chest
+		[6] = false, -- Waist
+		[7] = false, -- Legs
+		[8] = false, -- Feet
+		[9] = false, -- Wrist
+		[10] = true, -- Hands
+		[11] = true, -- Finger0
+		[12] = true, -- Finger1
+		[13] = false, -- Trinket0
+		[14] = false, -- Trinket1
+		[15] = false, -- Back
+		[16] = true, -- Mainhand
+		[17] = true, -- Offhand
+	}
 }
 local f = CreateFrame("Frame", nil, _G.PaperDollFrame) -- iLevel number frame for Character
 f:RegisterEvent("ADDON_LOADED")
@@ -23,41 +43,50 @@ local function initDB(a, b) -- Check DB settings, Defaults-table, Settings-table
 
 	return b
 end -- initDB
+local function Print(text, ...)
+	if text then
+		if text:match("%%[dfqs%d%.]") then
+			DEFAULT_CHAT_FRAME:AddMessage("|cffff9999".. ADDON_NAME ..":|r " .. format(text, ...))
+		else
+			DEFAULT_CHAT_FRAME:AddMessage("|cffff9999".. ADDON_NAME ..":|r " .. strjoin(" ", text, tostringall(...)))
+		end
+	end
+end -- Print
 
+local slotTable = { -- Slot names in right order
+	"HeadSlot",
+	"NeckSlot",
+	"ShoulderSlot",
+	"Shirt", -- Skip!
+	"ChestSlot",
+	"WaistSlot",
+	"LegsSlot",
+	"FeetSlot",
+	"WristSlot",
+	"HandsSlot",
+	"Finger0Slot",
+	"Finger1Slot",
+	"Trinket0Slot",
+	"Trinket1Slot",
+	"BackSlot",
+	"MainHandSlot",
+	"SecondaryHandSlot"
+}
 local anchorStrings, createStrings
 do -- Create and Anchor strings based on settings
 	local xo, yo = 8, 3 -- X-offset, Y-offset
-	local slotTable = { -- Slot names in right order
-		"HeadSlot",
-		"NeckSlot",
-		"ShoulderSlot",
-		"Shirt", -- Skip!
-		"ChestSlot",
-		"WaistSlot",
-		"LegsSlot",
-		"FeetSlot",
-		"WristSlot",
-		"HandsSlot",
-		"Finger0Slot",
-		"Finger1Slot",
-		"Trinket0Slot",
-		"Trinket1Slot",
-		"BackSlot",
-		"MainHandSlot",
-		"SecondaryHandSlot"
-	}
 
-	local function _returnPoints(slotId) -- Return anchoring points of string #
+	local function _returnPoints(slotId) -- Return anchoring points of string #, also because I'm lazy, I'm reusing this to return Tooltip achoring points as well
 		if db.inside then -- Inside
-			return "BOTTOM", "BOTTOM", 2, 3, "CENTER", "BOTTOM"
+			return "BOTTOM", "BOTTOM", 2, 3, "CENTER", "BOTTOM", "ANCHOR_CURSOR"
 		else
 			if slotId <= 5 or slotId == 15 or slotId == 9 then -- Left side
-				return "LEFT", "RIGHT", xo, 0, "LEFT", "MIDDLE"
+				return "LEFT", "RIGHT", xo, 0, "LEFT", "MIDDLE", "ANCHOR_RIGHT"
 			elseif slotId <= 14 then -- Right side
-				return "RIGHT", "LEFT", -xo, 0, "RIGHT", "MIDDLE"
+				return "RIGHT", "LEFT", -xo, 0, "RIGHT", "MIDDLE", "ANCHOR_LEFT"
 			else -- Weapon slots
 				--return "BOTTOM", "TOP", 2, yo, "CENTER", "BOTTOM"
-				return "BOTTOM", "TOP", 2, yo, "CENTER", "MIDDLE" -- Try to fix weapon strings sometimes looking bit weird
+				return "BOTTOM", "TOP", 2, yo, "CENTER", "MIDDLE", "ANCHOR_TOP" -- Try to fix weapon strings sometimes looking bit weird
 			end
 		end
 	end
@@ -105,6 +134,24 @@ do -- Create and Anchor strings based on settings
 		end
 	end -- anchorStrings
 
+	local function OnEnter(self) -- Enchant Tooltip OnEnter
+		if (not db.tooltips) or (db.setting < 2) or (db.inside) then return end -- Tooltips ON, Setting 2 and Anchor OUTSIDE
+
+		if self.currentEnchant ~= "" or self.currentSockets ~= "" then -- https://wow.gamepedia.com/API_GameTooltip_SetOwner
+			GameTooltip:SetOwner(self, select(-1, _returnPoints(self.slotId)))
+			if self.currentEnchant then
+				GameTooltip:AddLine(self.currentEnchant, _G.GREEN_FONT_COLOR.r, _G.GREEN_FONT_COLOR.g, _G.GREEN_FONT_COLOR.b, true)
+			end
+			if self.currentSockets then
+				GameTooltip:AddLine(self.currentSockets, 1, 1, 1, true)
+			end
+			GameTooltip:Show()
+		end
+	end
+	local function OnLeave(self) -- Enchant Tooltip OnLeave
+		GameTooltip:Hide()
+	end
+
 	function createStrings(frame) -- Create item level -strings
 		if #frame > 0 then return end
 
@@ -123,7 +170,9 @@ do -- Create and Anchor strings based on settings
 				frame[i] = CreateFrame("Frame", nil, frame)
 				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline") -- Revert the previous fix, the smaller text size made it bit too hard to read the icons
 				frame[i]:SetAllPoints(s) -- Fontstring anchoring hack by SDPhantom https://www.wowinterface.com/forums/showpost.php?p=280136&postcount=6
-				frame[i].string = s; frame[i].link = true; frame[i].itemLevel = ""; frame[i].upgradeString = ""; frame[i].enchantString = ""; frame[i].socketString = ""; frame[i].finalString = "%1$s"
+				frame[i].string = s; frame[i].slotId = i; frame[i].itemLevel = ""; frame[i].upgradeString = ""; frame[i].finalString = "%1$s"
+				frame[i].enchantString = ""; frame[i].currentEnchant = ""; frame[i].socketString = ""; frame[i].currentSockets = ""
+				frame[i]:SetScript("OnEnter", OnEnter); frame[i]:SetScript("OnLeave", OnLeave)
 			end
 		end
 
@@ -149,38 +198,52 @@ do -- Scan tooltip for sockets and upgrade levels
 	end
 
 	-- Construct your search patterns based on the existing global strings:
+	local S_ITEM_LEVEL = "^" .. gsub(ITEM_LEVEL, "%%d", "(%%d+)")
 	local S_UPGRADE_LEVEL = "^" .. gsub(_G.ITEM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)")
 	local S_HEIRLOOM_LEVEL = "^" .. gsub(_G.HEIRLOOM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)")
+	local S_ENCHANTED_TOOLTIP_LINE =  "^" .. gsub(_G.ENCHANTED_TOOLTIP_LINE, "%%s", "(.+)") -- https://www.townlong-yak.com/framexml/8.3/GlobalStrings.lua#5500, https://wow.gamepedia.com/HOWTO:_Use_Pattern_Matching
 
 	-- Expose the API:
-	function TooltipScanItem(itemLink)
+	function TooltipScanItem(itemLink, isEnchanted, isGem)
 		if not itemLink then return end
-		
+
 		-- Pass the item link to the tooltip:
 		tooltip:SetHyperlink(itemLink)
 
 		local n = {}
-		for i = 1, 10 do
+		for i = 1, 10 do -- Get all textures from Tooltip (Gems etc.)
 			if textures[i]:IsShown() then
 				n[#n + 1] = textures[i]:GetTexture()
 			end
 		end
 
+		local realItemLevel, currentUpgradeLevel, maxUpgradeLevel, currentEnchant
 		for i = 2, tooltip:NumLines() do -- Line 1 is always the name so you can skip it.
 			local text = _G[tooltipName .. "TextLeft" .. i]:GetText()
 			if text and text ~= "" then
-				local currentUpgradeLevel, maxUpgradeLevel = strmatch(text, S_UPGRADE_LEVEL)
-				if not currentUpgradeLevel then
+				if isGem then
+					if strmatch(text, "+(%d+)") then -- +50 Crit etc. (Gems and Cogs)
+						return text
+					elseif strmatch(text, "Equip:") then -- Equip: etc. (Punch Cards)
+						return strmatch(text, "Equip: (.+)")
+					end
+				elseif strmatch(text, S_ITEM_LEVEL) then
+					realItemLevel = strmatch(text, S_ITEM_LEVEL)
+				elseif strmatch(text, S_UPGRADE_LEVEL) then
+					currentUpgradeLevel, maxUpgradeLevel = strmatch(text, S_UPGRADE_LEVEL)
+				elseif strmatch(text, S_HEIRLOOM_LEVEL) then
 					currentUpgradeLevel, maxUpgradeLevel = strmatch(text, S_HEIRLOOM_LEVEL)
+				elseif isEnchanted and strmatch(text, S_ENCHANTED_TOOLTIP_LINE) then
+					currentEnchant = strmatch(text, S_ENCHANTED_TOOLTIP_LINE)
 				end
 
-				if currentUpgradeLevel then
-					return tonumber(currentUpgradeLevel), tonumber(maxUpgradeLevel), n
+				if realItemLevel and currentUpgradeLevel and ((not isEnchanted) or (isEnchanted and currentEnchant)) then
+					return tonumber(realItemLevel), tonumber(currentUpgradeLevel), tonumber(maxUpgradeLevel), currentEnchant, n
 				end
 			end
 		end
 
-		return nil, nil, n
+		return realItemLevel and tonumber(realItemLevel) or nil, currentUpgradeLevel and tonumber(currentUpgradeLevel) or nil, maxUpgradeLevel and tonumber(maxUpgradeLevel) or nil, currentEnchant, n
 	end
 end -- TooltipScanItem
 
@@ -209,13 +272,6 @@ local updateSlot
 do -- Update saved item data per slot and refresh text strings at the same time
 	local inspectOffhand -- Calculate the Average item level and rarity of inspect unit's gear
 	local inspectLevels, inspectRarity = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-	local enchantsTable = { -- Slots you can enchant in current xpack (aka the only ones worthwhile of your time)
-		[10] = true, -- Hands
-		[11] = true, -- Finger0
-		[12] = true, -- Finger1
-		[16] = true, -- Mainhand
-		[17] = true, -- Offhand
-	}
 
 	local function _updateAverageItemLevel() -- Update the Average Item Level text of Inspect Unit
 		local raritySum, iLvlSum = 0, 0
@@ -244,20 +300,15 @@ do -- Update saved item data per slot and refresh text strings at the same time
 		if unit and slotId ~= 4 and slotId <= 17 then
 			local link = GetInventoryItemLink(unit, slotId)
 			if link then -- We have an item
-				if frame[slotId].link == link then
-					return
-				else
-					frame[slotId].link = link
-				end
-
 				local item = Item:CreateFromItemLink(link)
 				item:ContinueOnItemLoad(function() -- Information should be cached now
 					local _, _, enchantId = strsplit(":", strmatch(link, "|H(.-)|h"))
 					local itemQuality = item:GetItemQuality()
 					local inventoryType = item:GetInventoryType()
 					frame[slotId].itemQualityColor = item:GetItemQualityColor()
-					frame[slotId].itemLevel = item:GetCurrentItemLevel() --GetDetailedItemLevelInfo(link)
-					local currentUpgradeLevel, maxUpgradeLevel, sockets = TooltipScanItem(link)
+
+					local itemLevel, currentUpgradeLevel, maxUpgradeLevel, currentEnchant, sockets = TooltipScanItem(link, (enchantId and enchantId ~= ""))
+					frame[slotId].itemLevel = itemLevel or item:GetCurrentItemLevel() or ""
 
 					-- Upgrades
 					frame[slotId].upgradeString = ""
@@ -266,23 +317,32 @@ do -- Update saved item data per slot and refresh text strings at the same time
 					end
 
 					-- Enchant
-					frame[slotId].enchantString = ""
+					frame[slotId].enchantString, frame[slotId].currentEnchant = "", ""
 					if enchantId and enchantId ~= "" then
 						frame[slotId].enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30|t"
-					elseif enchantsTable[slotId] then
+						frame[slotId].currentEnchant = currentEnchant and ("|T136244:0:0:0:0:32:32:2:30:2:30|t " .. currentEnchant) or ""
+					elseif db and db.enchantsTable and db.enchantsTable[slotId] then
 						if (slotId ~= 17) or (slotId == 17 and (inventoryType ~= 14 and inventoryType ~= 23)) then -- Check if not an Offhand of Offhand item is a Weapon, https://www.townlong-yak.com/framexml/8.2.0/Blizzard_APIDocumentation/ItemDocumentation.lua#438
 							frame[slotId].enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30:221:0:0|t"
 						end
 					end
 
 					-- Sockets
-					frame[slotId].socketString = ""
+					frame[slotId].socketString, frame[slotId].currentSockets = "", ""
 					for t = 1, #sockets do
 						if sockets[t] then
-							if strmatch(sockets[t], "EmptySocket") then -- Empty socket (Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic, UI-EmptySocket-PunchcardBlue, UI-EmptySocket-PunchcardRed, UI-EmptySocket-PunchcardYellow), might be that we don't have proper gem info yet, don't cache this
-								frame[slotId].link = nil
-							end
 							frame[slotId].socketString = frame[slotId].socketString .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t"
+						end
+
+						local gemName, gemLink = GetItemGem(link, t)
+						if gemName then
+							local gemStat = TooltipScanItem(gemLink, nil, true)
+							if db.color then
+								local _, _, colorHex = string.find(gemLink, "|cff(%x*)")
+								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|cff" .. colorHex .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat .. "|r") or ""))
+							else
+								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat) or ""))
+							end
 						end
 					end
 
@@ -307,9 +367,9 @@ do -- Update saved item data per slot and refresh text strings at the same time
 				end)
 			else -- No link, better reset stuff
 				frame[slotId].string:SetFormattedText("")
-				frame[slotId].link = nil
-				frame[slotId].itemLevel = ""
-				frame[slotId].upgradeString, frame[slotId].enchantString, frame[slotId].socketString = "", "", ""
+				frame[slotId].itemLevel, frame[slotId].upgradeString = "", ""
+				frame[slotId].enchantString, frame[slotId].currentEnchant = "", ""
+				frame[slotId].socketString, frame[slotId].currentSockets = "", ""
 
 				if unit ~= "player" then
 					inspectLevels[slotId] = 0
@@ -334,11 +394,10 @@ local function OnShow(self, force) -- Refresh text strings on frame Show or when
 			for slotId = 1, 17 do
 				if slotId ~= 4 then
 					if (force) then -- Calling from SlashCmd, settings might have changed, better reset links and get up to date finalString
-						self[slotId].link = nil
 						self[slotId].finalString = getFinalString(slotId, self[slotId].itemQualityColor)
 					end
 
-					if self[slotId].itemLevel ~= "" then
+					if self[slotId].itemLevel ~= nil and self[slotId].itemLevel ~= "" then
 						self[slotId].string:SetFormattedText(self[slotId].finalString, self[slotId].itemLevel, self[slotId].upgradeString, self[slotId].enchantString, self[slotId].socketString)
 						local w = math.max(self[slotId].string:GetWidth(), self[slotId].string:GetParent():GetWidth() + 2)
 						self[slotId].string:SetWidth(w)
@@ -381,12 +440,41 @@ f:SetScript("OnEvent", OnEvent)
 
 SLASH_ILEVEL1 = "/ilevel"
 SlashCmdList.ILEVEL = function(...)
-	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" then
+	local showHelp, showInfo = true, true
+	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "enchants" or strmatch((...), "enchants %d+") then
+		showHelp = false
 		-- Save settings
 		if (...) == "inside" then
 			db.inside = not db.inside
 		elseif (...) == "color" then
 			db.color = not db.color
+		elseif (...) == "tooltip" then
+			db.tooltips = not db.tooltips
+		elseif (...) == "enchants" then
+			showInfo = false
+			Print("Show missing Enchants for slots:")
+			for i = 1, 17 do
+				if i ~= 4 then
+					Print("  %s%d%s - %s%s%s (%s)",
+						_G.NORMAL_FONT_COLOR_CODE, i, _G.FONT_COLOR_CODE_CLOSE,
+						db.enchantsTable[i] and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.enchantsTable[i] and "True" or "False", _G.FONT_COLOR_CODE_CLOSE, _G[strupper(slotTable[i])])
+				end
+			end
+		elseif strmatch((...), "enchants %d+") then
+			showInfo = false
+			local n = tonumber(strmatch((...), "enchants (%d+)"))
+			if not n or n <= 0 or n > 17 or n == 4 then
+				Print("Give number between %s1-4%s or %s5-17%s, you gave %s%s%s",
+					_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+					_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+					_G.NORMAL_FONT_COLOR_CODE, tostring(n), _G.FONT_COLOR_CODE_CLOSE
+				)
+			else
+				db.enchantsTable[n] = not db.enchantsTable[n]
+				Print("Show missing Enchants for slot %s%d%s (%s) has been set to %s%s%s",
+					_G.NORMAL_FONT_COLOR_CODE, n, _G.FONT_COLOR_CODE_CLOSE, _G[strupper(slotTable[n])],
+					db.enchantsTable[n] and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.enchantsTable[n] and "True" or "False", _G.FONT_COLOR_CODE_CLOSE)
+			end
 		else
 			db.setting = tonumber((...))
 		end
@@ -399,6 +487,33 @@ SlashCmdList.ILEVEL = function(...)
 			anchorStrings(g)
 		end
 	end
-	_G.ChatFrame1:AddMessage("|cffff9999"..ADDON_NAME..":|r " .. _G.NORMAL_FONT_COLOR_CODE .. "/ilevel" .. _G.FONT_COLOR_CODE_CLOSE .. " ( 0 | 1 | 2 | inside | color )\n " .. _G.NORMAL_FONT_COLOR_CODE .. "0" .. _G.FONT_COLOR_CODE_CLOSE .. " - Only show item levels.\n " .. _G.NORMAL_FONT_COLOR_CODE .. "1" .. _G.FONT_COLOR_CODE_CLOSE .. " - Show item levels and upgrades.\n " .. _G.NORMAL_FONT_COLOR_CODE .. "2" .. _G.FONT_COLOR_CODE_CLOSE .. " - Show item levels, upgrades and enchants and gems.\n " .. _G.NORMAL_FONT_COLOR_CODE .. "inside" .. _G.FONT_COLOR_CODE_CLOSE .. " - Change anchor point between INSIDE and OUTSIDE.\n " .. _G.NORMAL_FONT_COLOR_CODE .. "color" .. _G.FONT_COLOR_CODE_CLOSE .. " - Change coloring between RARITY and DEFAULT.")
-	_G.ChatFrame1:AddMessage("|cffff9999"..ADDON_NAME..":|r Current settings are: " .. _G.NORMAL_FONT_COLOR_CODE .. tostring(db.setting) .. _G.FONT_COLOR_CODE_CLOSE .. " / " .. _G.NORMAL_FONT_COLOR_CODE .. (db.inside and "INSIDE" or "OUTSIDE") .. _G.FONT_COLOR_CODE_CLOSE .. " / " .. _G.NORMAL_FONT_COLOR_CODE .. (db.color and "RARITY" or "DEFAULT") .. _G.FONT_COLOR_CODE_CLOSE)
+	if showHelp then
+		Print([=[%s/ilevel%s ( 0 | 1 | 2 | inside | color | tooltip | enchants [#] )
+ %s0%s - Only show item levels.
+ %s1%s - Show item levels and upgrades.
+ %s2%s - Show item levels, upgrades and enchants and gems.
+ %sinside%s - Change anchor point between INSIDE and OUTSIDE.
+ %scolor%s - Change coloring between RARITY and DEFAULT.
+ %stooltip%s - ENABLE/DISABLE show Enchant/Gem-tooltips.
+   - Works only when setting is %s2%s and anchor is set to %sOUTSIDE%s.
+ %senchants [#]%s - ENABLE/DISABLE show missing Enchants for slot #.
+   - Ommit # to list slots and their current settings.]=],
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE)
+	end
+	if showInfo then
+		Print("Current settings are: %s%s%s / %s%s%s / %s%s%s / %s%s%s",
+			_G.NORMAL_FONT_COLOR_CODE, tostring(db.setting), _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, db.inside and "INSIDE" or "OUTSIDE", _G.FONT_COLOR_CODE_CLOSE,
+			_G.NORMAL_FONT_COLOR_CODE, db.color and "RARITY" or "DEFAULT", _G.FONT_COLOR_CODE_CLOSE,
+			db.tooltips and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.tooltips and "ENABLED" or "DISABLED", _G.FONT_COLOR_CODE_CLOSE)
+	end
 end
