@@ -137,8 +137,8 @@ do -- Create and Anchor strings based on settings
 	local function OnEnter(self) -- Enchant Tooltip OnEnter
 		if (not db.tooltips) or (db.setting < 2) or (db.inside) then return end -- Tooltips ON, Setting 2 and Anchor OUTSIDE
 
-		if self.currentEnchant ~= "" or self.currentSockets ~= "" then -- https://wow.gamepedia.com/API_GameTooltip_SetOwner
-			GameTooltip:SetOwner(self, select(-1, _returnPoints(self.slotId)))
+		if self.currentEnchant ~= "" or self.currentSockets ~= "" then
+			GameTooltip:SetOwner(self, select(-1, _returnPoints(self.slotId))) -- https://wow.gamepedia.com/API_GameTooltip_SetOwner
 			if self.currentEnchant then
 				GameTooltip:AddLine(self.currentEnchant, _G.GREEN_FONT_COLOR.r, _G.GREEN_FONT_COLOR.g, _G.GREEN_FONT_COLOR.b, true)
 			end
@@ -222,10 +222,10 @@ do -- Scan tooltip for sockets and upgrade levels
 			local text = _G[tooltipName .. "TextLeft" .. i]:GetText()
 			if text and text ~= "" then
 				if isGem then
-					if strmatch(text, "+(%d+)") then -- +50 Crit etc. (Gems and Cogs)
+					if strmatch(text, "+(%d+)") then -- +50 Crit etc. (Gems, Cogs and Punch Cards)
 						return text
-					elseif strmatch(text, "Equip:") then -- Equip: etc. (Punch Cards)
-						return strmatch(text, "Equip: (.+)")
+					elseif strmatch(text, _G.ITEM_SPELL_TRIGGER_ONEQUIP) then -- "Equip:" (Punch Cards)
+						return strmatch(text, _G.ITEM_SPELL_TRIGGER_ONEQUIP .. " (.+)")
 					end
 				elseif strmatch(text, S_ITEM_LEVEL) then
 					realItemLevel = strmatch(text, S_ITEM_LEVEL)
@@ -464,7 +464,7 @@ SlashCmdList.ILEVEL = function(...)
 			showInfo = false
 			local n = tonumber(strmatch((...), "enchants (%d+)"))
 			if not n or n <= 0 or n > 17 or n == 4 then
-				Print("Give number between %s1-4%s or %s5-17%s, you gave %s%s%s",
+				Print("Give number between %s1-3%s or %s5-17%s, you gave %s%s%s",
 					_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
 					_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
 					_G.NORMAL_FONT_COLOR_CODE, tostring(n), _G.FONT_COLOR_CODE_CLOSE
