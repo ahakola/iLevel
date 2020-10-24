@@ -7,7 +7,7 @@ I know there are 13 of these addons in a dozen, but this is my version. While le
 ---
 
 ```
-/ilevel ( 0 | 1 | 2 | inside | color | tooltip | enchants [#] )
+/ilevel ( 0 | 1 | 2 | inside | color | tooltip | enchants [#] | resetenchants )
 
 0 - Only show item levels.
 1 - Show item levels and upgrades.
@@ -18,6 +18,7 @@ tooltip - ENABLE/DISABLE show Enchant/Gem-tooltips.
    - Works only when setting is 2 and anchor is set to OUTSIDE.
 enchants [#] - ENABLE/DISABLE show missing Enchants for slot number #.
    - Ommit # to list slot numbers and their current settings.
+resetenchants - reset "Show missing Enchants for slots" -settings back to defaults.
 ```
 
 ---

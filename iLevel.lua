@@ -11,17 +11,17 @@ local DBDefaults = { -- Default settings for new users
 		[2] = false, -- Neck
 		[3] = false, -- Shoulder
 		[4] = false, -- Shirt
-		[5] = false, -- Chest
+		[5] = true, -- Chest
 		[6] = false, -- Waist
 		[7] = false, -- Legs
-		[8] = false, -- Feet
-		[9] = false, -- Wrist
+		[8] = true, -- Feet
+		[9] = true, -- Wrist
 		[10] = true, -- Hands
 		[11] = true, -- Finger0
 		[12] = true, -- Finger1
 		[13] = false, -- Trinket0
 		[14] = false, -- Trinket1
-		[15] = false, -- Back
+		[15] = true, -- Back
 		[16] = true, -- Mainhand
 		[17] = true, -- Offhand
 	}
@@ -394,7 +394,9 @@ local function OnShow(self, force) -- Refresh text strings on frame Show or when
 			for slotId = 1, 17 do
 				if slotId ~= 4 then
 					if (force) then -- Calling from SlashCmd, settings might have changed, better reset links and get up to date finalString
-						self[slotId].finalString = getFinalString(slotId, self[slotId].itemQualityColor)
+						local frame = (self == f) and "Character" or "Inspect"
+						updateSlot(_G[ frame..slotTable[slotId] ])
+						--self[slotId].finalString = getFinalString(slotId, self[slotId].itemQualityColor)
 					end
 
 					if self[slotId].itemLevel ~= nil and self[slotId].itemLevel ~= "" then
@@ -441,7 +443,7 @@ f:SetScript("OnEvent", OnEvent)
 SLASH_ILEVEL1 = "/ilevel"
 SlashCmdList.ILEVEL = function(...)
 	local showHelp, showInfo = true, true
-	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "enchants" or strmatch((...), "enchants %d+") then
+	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "resetenchants" or (...) == "enchants" or strmatch((...), "enchants %d+") then
 		showHelp = false
 		-- Save settings
 		if (...) == "inside" then
@@ -450,6 +452,12 @@ SlashCmdList.ILEVEL = function(...)
 			db.color = not db.color
 		elseif (...) == "tooltip" then
 			db.tooltips = not db.tooltips
+		elseif (...) == "resetenchants" then
+			showInfo = false
+			for i = 1, 17 do
+				db.enchantsTable[i] = (DBDefaults.enchantsTable[i]) and true or false
+			end
+			Print("Show missing Enchants for slots has been reseted to defaults.")
 		elseif (...) == "enchants" then
 			showInfo = false
 			Print("Show missing Enchants for slots:")
@@ -497,7 +505,9 @@ SlashCmdList.ILEVEL = function(...)
  %stooltip%s - ENABLE/DISABLE show Enchant/Gem-tooltips.
    - Works only when setting is %s2%s and anchor is set to %sOUTSIDE%s.
  %senchants [#]%s - ENABLE/DISABLE show missing Enchants for slot #.
-   - Ommit # to list slots and their current settings.]=],
+   - Ommit # to list slots and their current settings.
+ %sresetenchants%s - Reset 'Show missing Enchants' -settings to defaults.]=],
+			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
 			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
 			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
 			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
