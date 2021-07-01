@@ -1,3 +1,5 @@
+![Release](https://github.com/ahakola/iLevel/actions/workflows/release.yml/badge.svg)
+
 # iLevel
 
 Shows equiped items itemlevel on Paperdoll frame view, nothing more, nothing less. ~~No other features~~, ~~no bloat~~, these days the addon can show you missing enchants, gems and upgrades and also supports Inspect frame and has only little bit of fancy stuff (Average itemlevel on InspectFrame is extra fancy).
