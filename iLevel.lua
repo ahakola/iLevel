@@ -16,7 +16,7 @@ local DBDefaults = { -- Default settings for new users
 		[7] = false, -- Legs
 		[8] = true, -- Feet
 		[9] = true, -- Wrist
-		[10] = true, -- Hands
+		[10] = false, -- Hands
 		[11] = true, -- Finger0
 		[12] = true, -- Finger1
 		[13] = false, -- Trinket0
@@ -97,19 +97,19 @@ do -- Create and Anchor strings based on settings
 		fancy:SetPoint((isLeft and "RIGHT" or "LEFT"), point, "CENTER")
 		fancy:SetSize(65, 35)
 		fancy:SetColorTexture(1, 1, 1)
-		fancy:SetGradientAlpha("Horizontal", r, g, b, aLeft, r, g, b, aRight)
+		fancy:SetGradient("Horizontal", CreateColor(r, g, b, aLeft), CreateColor(r, g, b, aRight))
 
 		fancy.top = parent:CreateTexture(nil, "BORDER")
 		fancy.top:SetPoint("BOTTOM", fancy, "TOP")
 		fancy.top:SetSize(65, 2)
 		fancy.top:SetColorTexture(0, 0, 0)
-		fancy.top:SetGradientAlpha("Horizontal", 0, 0, 0, 2*aLeft, 0, 0, 0, 2*aRight)
+		fancy.top:SetGradient("Horizontal", CreateColor(0, 0, 0, 2*aLeft), CreateColor(0, 0, 0, 2*aRight))
 
 		fancy.bottom = parent:CreateTexture(nil, "BORDER")
 		fancy.bottom:SetPoint("TOP", fancy, "BOTTOM")
 		fancy.bottom:SetSize(65, 2)
 		fancy.bottom:SetColorTexture(0, 0, 0)
-		fancy.bottom:SetGradientAlpha("Horizontal", 0, 0, 0, 2*aLeft, 0, 0, 0, 2*aRight)
+		fancy.bottom:SetGradient("Horizontal", CreateColor(0, 0, 0, 2*aLeft), CreateColor(0, 0, 0, 2*aRight))
 
 		return fancy
 	end

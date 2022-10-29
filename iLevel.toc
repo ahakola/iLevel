@@ -1,4 +1,4 @@
-## Interface: 90205
+## Interface: 100000
 ## Author: Sanex (Arathor EU)
 ## Title: iLevel
 ## Version: @project-version@
