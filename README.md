@@ -19,7 +19,7 @@ color - Change the coloring of the itemlevel texts between DEFAULT and RARITY co
 tooltip - ENABLE/DISABLE show Enchant/Gem-tooltips.
    - Works only when setting is 2 and anchor is set to OUTSIDE.
 difference - ENABLE/DISABLE coloring based on itemlevel difference to averate item level.
-inspect - ENABLE/DISABLE showing itemLevels on IspectFrame (Requires `/reloadui` to take effect).
+inspect - ENABLE/DISABLE showing itemLevels on IspectFrame (Requires /reloadui to take effect).
 enchants [#] - ENABLE/DISABLE show missing Enchants for slot number #.
    - Ommit # to list slot numbers and their current settings.
 resetenchants - reset "Show missing Enchants for slots" -settings back to defaults.
