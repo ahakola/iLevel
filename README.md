@@ -9,7 +9,7 @@ I know there are 13 of these addons in a dozen, but this is my version. While le
 ---
 
 ```
-/ilevel ( 0 | 1 | 2 | inside | color | tooltip | enchants [#] | resetenchants )
+/ilevel ( 0 | 1 | 2 | inside | color | tooltip |  difference | inspect | enchants [#] | resetenchants )
 
 0 - Only show item levels.
 1 - Show item levels and upgrades.
@@ -18,6 +18,8 @@ inside - Change anchoring of the item levels between INSIDE and OUTSIDE of the s
 color - Change the coloring of the itemlevel texts between DEFAULT and RARITY coloring.
 tooltip - ENABLE/DISABLE show Enchant/Gem-tooltips.
    - Works only when setting is 2 and anchor is set to OUTSIDE.
+difference - ENABLE/DISABLE coloring based on itemlevel difference to averate item level.
+inspect - ENABLE/DISABLE showing itemLevels on IspectFrame (Requires `/reloadui` to take effect).
 enchants [#] - ENABLE/DISABLE show missing Enchants for slot number #.
    - Ommit # to list slot numbers and their current settings.
 resetenchants - reset "Show missing Enchants for slots" -settings back to defaults.

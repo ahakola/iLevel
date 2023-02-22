@@ -602,7 +602,7 @@ SlashCmdList.ILEVEL = function(...)
  %s - ENABLE/DISABLE show Enchant/Gem-tooltips.
    - Works only when setting is %s and anchor is set to %s.
  %s - ENABLE/DISABLE coloring based on itemlevel difference to averate item level.
- %s - ENABLE/DISABLE showing itemLevels on IspectFrame (Changing this ReloadUI to work).
+ %s - ENABLE/DISABLE showing itemLevels on IspectFrame (Requires %s to take effect).
  %s - ENABLE/DISABLE show missing Enchants for slot #.
    - Ommit # to list slots and their current settings.
  %s - Reset 'Show missing Enchants' -settings to defaults.]=],
@@ -617,6 +617,7 @@ SlashCmdList.ILEVEL = function(...)
 				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("OUTSIDE"),
 			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("difference"),
 			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("inspect"),
+				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("/reloadui"),
 			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("enchants [#]"),
 			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("resetenchants")
 		)
