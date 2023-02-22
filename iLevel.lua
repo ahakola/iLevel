@@ -1,9 +1,10 @@
 local ADDON_NAME = ...
 local _G = _G
 local g, db -- Inspect Frame itemLevels / Settings on how much we show, where we anchor stuff and how we color it
+local isWrathClassic = (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_WRATH_CLASSIC)
 local DBDefaults = { -- Default settings for new users
 	setting = 2,
-	inside = false,
+	inside = (isWrathClassic) and true or false,
 	color = false,
 	tooltips = false,
 	enchantsTable = { -- Slots you can enchant in current xpack (aka the only ones worthwhile of your time)
@@ -11,19 +12,19 @@ local DBDefaults = { -- Default settings for new users
 		[2] = false, -- Neck
 		[3] = false, -- Shoulder
 		[4] = false, -- Shirt
-		[5] = true, -- Chest
+		[5] = (isWrathClassic) and true or true, -- Chest
 		[6] = false, -- Waist
 		[7] = false, -- Legs
-		[8] = true, -- Feet
-		[9] = true, -- Wrist
-		[10] = false, -- Hands
-		[11] = true, -- Finger0
-		[12] = true, -- Finger1
+		[8] = (isWrathClassic) and true or true, -- Feet
+		[9] = (isWrathClassic) and true or true, -- Wrist
+		[10] = (isWrathClassic) and true or false, -- Hands
+		[11] = (isWrathClassic) and true or true, -- Finger0
+		[12] = (isWrathClassic) and true or true, -- Finger1
 		[13] = false, -- Trinket0
 		[14] = false, -- Trinket1
-		[15] = true, -- Back
-		[16] = true, -- Mainhand
-		[17] = true, -- Offhand
+		[15] = (isWrathClassic) and true or true, -- Back
+		[16] = (isWrathClassic) and true or true, -- Mainhand
+		[17] = (isWrathClassic) and true or true, -- Offhand
 	}
 }
 local f = CreateFrame("Frame", nil, _G.PaperDollFrame) -- iLevel number frame for Character
@@ -53,6 +54,7 @@ local function Print(text, ...)
 	end
 end -- Print
 
+local maxSlots = (isWrathClassic) and 18 or 17
 local slotTable = { -- Slot names in right order
 	"HeadSlot",
 	"NeckSlot",
@@ -72,6 +74,8 @@ local slotTable = { -- Slot names in right order
 	"MainHandSlot",
 	"SecondaryHandSlot"
 }
+if (isWrathClassic) then slotTable[#slotTable + 1] = "RangedSlot" end
+
 local anchorStrings, createStrings
 do -- Create and Anchor strings based on settings
 	local xo, yo = 8, 3 -- X-offset, Y-offset
@@ -122,7 +126,7 @@ do -- Create and Anchor strings based on settings
 			point = "Inspect"
 		end
 
-		for i = 1, 17 do -- Set Point and Justify
+		for i = 1, maxSlots do -- Set Point and Justify
 			if i ~= 4 then
 				local parent = _G[ point..slotTable[i] ]
 				local myPoint, parentPoint, x, y, justifyH, justifyV = _returnPoints(i)
@@ -157,15 +161,25 @@ do -- Create and Anchor strings based on settings
 
 		if frame == f then
 			frame:SetFrameLevel(_G.CharacterHeadSlot:GetFrameLevel())
+			if (isWrathClassic) then
+				frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+				frame["avg"]:SetPoint("BOTTOM", _G.CharacterModelFrame, "BOTTOM", 0, 18*yo)
+				frame.fancyLeft = _createFancy(frame, frame["avg"], true)
+				frame.fancyRight = _createFancy(frame, frame["avg"], false)
+			end
 		else
 			frame:SetFrameLevel(_G.InspectHeadSlot:GetFrameLevel())
 			frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-			frame["avg"]:SetPoint("TOP", _G.InspectModelFrameControlFrame, "BOTTOM", 0, -yo)
+			if (isWrathClassic) then
+				frame["avg"]:SetPoint("BOTTOM", _G.InspectModelFrame, "BOTTOM", 0, 3*yo)
+			else
+				frame["avg"]:SetPoint("TOP", _G.InspectModelFrameControlFrame, "BOTTOM", 0, -yo)
+			end
 			frame.fancyLeft = _createFancy(frame, frame["avg"], true)
 			frame.fancyRight = _createFancy(frame, frame["avg"], false)
 		end
 
-		for i = 1, 17 do
+		for i = 1, maxSlots do
 			if i ~= 4 then
 				frame[i] = CreateFrame("Frame", nil, frame)
 				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline") -- Revert the previous fix, the smaller text size made it bit too hard to read the icons
@@ -173,6 +187,7 @@ do -- Create and Anchor strings based on settings
 				frame[i].string = s; frame[i].slotId = i; frame[i].itemLevel = ""; frame[i].upgradeString = ""; frame[i].finalString = "%1$s"
 				frame[i].enchantString = ""; frame[i].currentEnchant = ""; frame[i].socketString = ""; frame[i].currentSockets = ""
 				frame[i]:SetScript("OnEnter", OnEnter); frame[i]:SetScript("OnLeave", OnLeave)
+				frame[i]:EnableMouse(db.tooltips)
 			end
 		end
 
@@ -262,7 +277,7 @@ local function getFinalString(slotId, itemQualityColor) -- Construct the itemLev
 	end
 
 	if db.color and itemQualityColor then
-		finalString = itemQualityColor.hex .. finalString .. _G.FONT_COLOR_CODE_CLOSE
+		finalString = (isHex and itemQualityColor or itemQualityColor.hex) .. finalString .. _G.FONT_COLOR_CODE_CLOSE
 	end
 
 	return finalString
@@ -270,12 +285,13 @@ end -- getFinalString
 
 local updateSlot
 do -- Update saved item data per slot and refresh text strings at the same time
+	--[[
 	local inspectOffhand -- Calculate the Average item level and rarity of inspect unit's gear
 	local inspectLevels, inspectRarity = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 	local function _updateAverageItemLevel() -- Update the Average Item Level text of Inspect Unit
 		local raritySum, iLvlSum = 0, 0
-		for i = 1, 17 do
+		for i = 1, maxSlots do
 			raritySum = raritySum + inspectRarity[i]
 			iLvlSum = iLvlSum + inspectLevels[i]
 		end
@@ -287,7 +303,9 @@ do -- Update saved item data per slot and refresh text strings at the same time
 
 		g["avg"]:SetFormattedText("%s%d%s", _G.ITEM_QUALITY_COLORS[math.floor(raritySum / math.max(itemCount, 1))].hex, math.floor(iLvlSum / math.max(itemCount, 1)), _G.FONT_COLOR_CODE_CLOSE)
 	end -- _updateAverageItemLevel
+	]]
 
+	local updateLockPlayer, updateLockInspect = false, false
 	function updateSlot(button) -- Slot was updated, check if we need to update the ilevel-text
 		local slotId = button:GetID()
 		local frame, unit
@@ -297,7 +315,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 			frame, unit = g, _G.InspectFrame.unit or "target"
 		end
 
-		if unit and slotId ~= 4 and slotId <= 17 then
+		if unit and slotId ~= 4 and slotId > 0 and slotId <= maxSlots then
 			local link = GetInventoryItemLink(unit, slotId)
 			if link then -- We have an item
 				local item = Item:CreateFromItemLink(link)
@@ -355,6 +373,59 @@ do -- Update saved item data per slot and refresh text strings at the same time
 					local w = frame[slotId].string:GetStringWidth() + 5 --math.max(frame[slotId].string:GetWidth(), frame[slotId].string:GetParent():GetWidth() + 2)
 					frame[slotId].string:SetWidth(w)
 					
+					if (unit == "player" and (not updateLockPlayer)) or (unit ~= "player" and (not updateLockInspect)) then
+						if unit == "player" then
+							updateLockPlayer = true
+						else
+							updateLockInspect = true
+						end
+						C_Timer.After(0, function() -- Fire on next frame instead of current frame
+							local totalIlvl, totalQlvl = 0, 0
+							local isOffhandEquipped = true
+							for z = 1, maxSlots do
+								if z ~= 4 then
+									if (frame[z].itemLevel ~= "") then
+										totalIlvl = totalIlvl + frame[z].itemLevel
+										totalQlvl = totalQlvl + itemQuality
+									elseif z == 17 then
+										isOffhandEquipped = false
+									end
+								end
+							end
+							local itemCountFix = (isOffhandEquipped == true) and 1 or 2 -- Remove Shirt or Shirt+Offhand
+							local finalAvgItemLevel = math.floor(totalIlvl / (maxSlots - itemCountFix))
+							local finalAvgQualityLevel = math.floor(totalQlvl / (maxSlots - itemCountFix))
+							if ((isWrathClassic) and unit == "player") or unit ~= "player" then
+								frame["avg"]:SetFormattedText("%s%d%s", _G.ITEM_QUALITY_COLORS[finalAvgQualityLevel].hex, finalAvgItemLevel, _G.FONT_COLOR_CODE_CLOSE)
+							end
+
+							if db.differenceColor then
+								for x = 1, maxSlots do
+									if x ~= 4 then
+										if (frame[x].itemLevel ~= "") then
+											local iLevelGap = (finalAvgItemLevel - frame[x].itemLevel)
+											local itemLevelColorCode = _G.GREEN_FONT_COLOR_CODE
+											if iLevelGap >= 10 and iLevelGap < 20 then
+												itemLevelColorCode = _G.ORANGE_FONT_COLOR_CODE
+											elseif iLevelGap >= 20 then
+												itemLevelColorCode = _G.RED_FONT_COLOR_CODE
+											end
+											frame[x].finalString = getFinalString(x, itemLevelColorCode, true)
+											frame[x].string:SetFormattedText(frame[x].finalString, frame[x].itemLevel, frame[x].upgradeString, frame[x].enchantString, frame[x].socketString)
+											local w = frame[x].string:GetStringWidth() + 5
+											frame[x].string:SetWidth(w)
+										end
+									end
+								end
+							end
+							if unit == "player" then
+								updateLockPlayer = false
+							else
+								updateLockInspect = false
+							end
+						end)
+					end
+					--[[
 					if unit ~= "player" then
 						inspectLevels[slotId] = frame[slotId].itemLevel or 0
 						inspectRarity[slotId] = (itemQuality == _G.LE_ITEM_QUALITY_HEIRLOOM and _G.LE_ITEM_QUALITY_RARE or (itemQuality or 0)) -- Downscale Heirlooms to Rare
@@ -364,6 +435,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 						end
 						_updateAverageItemLevel()
 					end
+					]]
 				end)
 			else -- No link, better reset stuff
 				frame[slotId].string:SetFormattedText("")
@@ -371,6 +443,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 				frame[slotId].enchantString, frame[slotId].currentEnchant = "", ""
 				frame[slotId].socketString, frame[slotId].currentSockets = "", ""
 
+				--[[
 				if unit ~= "player" then
 					inspectLevels[slotId] = 0
 					inspectRarity[slotId] = 0
@@ -380,6 +453,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 					end
 					_updateAverageItemLevel()
 				end
+				]]
 			end
 		end
 	end -- updateSlot
@@ -391,7 +465,7 @@ local function OnShow(self, force) -- Refresh text strings on frame Show or when
 	if (force) or (not lock) then -- Check if locked or forced call from SlashCmd
 		lock = true
 		C_Timer.After(0, function() -- Fire on next frame instead of current frame
-			for slotId = 1, 17 do
+			for slotId = 1, maxSlots do
 				if slotId ~= 4 then
 					if (force) then -- Calling from SlashCmd, settings might have changed, better reset links and get up to date finalString
 						local frame = (self == f) and "Character" or "Inspect"
@@ -420,14 +494,17 @@ local function OnEvent(self, event, ...) -- Event handler
 			db = _G.iLevelSetting
 
 			self:RegisterEvent("PLAYER_LOGIN")
+			--self:RegisterEvent("INSPECT_READY")
 		elseif (...) == "Blizzard_InspectUI" then
 			self:UnregisterEvent(event)
 
-			g = CreateFrame("Frame", nil, _G.InspectPaperDollFrame) -- iLevel number frame for Inspect
-			g:SetScript("OnShow", OnShow)
-			createStrings(g)
-			-- https://www.townlong-yak.com/framexml/8.2.0/Blizzard_InspectUI/InspectPaperDollFrame.lua#159
-			hooksecurefunc("InspectPaperDollItemSlotButton_Update", updateSlot)
+			if not db.disableInspect then
+				g = CreateFrame("Frame", nil, _G.InspectPaperDollFrame) -- iLevel number frame for Inspect
+				g:SetScript("OnShow", OnShow)
+				createStrings(g)
+				-- https://www.townlong-yak.com/framexml/8.2.0/Blizzard_InspectUI/InspectPaperDollFrame.lua#159
+				hooksecurefunc("InspectPaperDollItemSlotButton_Update", updateSlot)
+			end
 		end
 	elseif event == "PLAYER_LOGIN" then
 		self:UnregisterEvent(event)
@@ -436,6 +513,12 @@ local function OnEvent(self, event, ...) -- Event handler
 		createStrings(f)
 		-- https://www.townlong-yak.com/framexml/8.2.0/PaperDollFrame.lua#1610
 		hooksecurefunc("PaperDollItemSlotButton_Update", updateSlot)
+	--elseif event == "INSPECT_READY" then
+	--	for slotId = 1, maxSlots do
+	--		if slotId ~= 4 then
+	--			updateSlot(_G["Inspect" .. slotTable[slotId]])
+	--		end
+	--	end
 	end
 end -- OnEvent
 f:SetScript("OnEvent", OnEvent)
