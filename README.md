@@ -27,6 +27,7 @@ resetenchants - reset "Show missing Enchants for slots" -settings back to defaul
 
 ---
 
+* NEW v.2.13: Added option to color the items based on the item's itemlevel difference to your average itemlevel. If item's itemlevel is below average less than 10 levels it will be colored green, 10-19 levels it will be colored orange and 20 or more levels it will be colored red. Also added support for Wrath Classic.
 * NEW v2.3: Added option to show tooltips for Enchants and Gems when hovering over the itemlevel text (N.B.: This feature is **OFF** by default). Also added option to enable/disable the missing enchant warning per itemslot. These are only warnings of missing enchants, the addon will still show all applied enchants for all itemslots like before. By default the addon will show warnings for BfA enchantable itemslots.
 * NEW v2.0: Rewrote the addon. The addon should detect all sockets (except Azerite Essences) without hardcoding and the addon should also detect all enchants, but only shows missing enchants for the slots with BfA enchants.
 * NEW v1.18: Fixed Offhand Artifacts. Added Average itemlevel text for InspectFrame. Added option to color itemlevel texts with the color of itemrarity instead of default color.
