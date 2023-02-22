@@ -7,6 +7,8 @@ local DBDefaults = { -- Default settings for new users
 	inside = (isWrathClassic) and true or false,
 	color = false,
 	tooltips = false,
+	differenceColor = false,
+	disableInspect = false,
 	enchantsTable = { -- Slots you can enchant in current xpack (aka the only ones worthwhile of your time)
 		[1] = false, -- Head
 		[2] = false, -- Neck
@@ -262,7 +264,7 @@ do -- Scan tooltip for sockets and upgrade levels
 	end
 end -- TooltipScanItem
 
-local function getFinalString(slotId, itemQualityColor) -- Construct the itemLevel-string
+local function getFinalString(slotId, itemQualityColor, isHex) -- Construct the itemLevel-string
 	local finalString = "%1$s"
 	local left = (slotId <= 5 or slotId == 15 or slotId == 9 or slotId == 17)
 
@@ -526,7 +528,7 @@ f:SetScript("OnEvent", OnEvent)
 SLASH_ILEVEL1 = "/ilevel"
 SlashCmdList.ILEVEL = function(...)
 	local showHelp, showInfo = true, true
-	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "resetenchants" or (...) == "enchants" or strmatch((...), "enchants %d+") then
+	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "difference" or (...) == "inspect" or (...) == "resetenchants" or (...) == "enchants" or strmatch((...), "enchants %d+") then
 		showHelp = false
 		-- Save settings
 		if (...) == "inside" then
@@ -535,6 +537,18 @@ SlashCmdList.ILEVEL = function(...)
 			db.color = not db.color
 		elseif (...) == "tooltip" then
 			db.tooltips = not db.tooltips
+			for i = 1, maxSlots do
+				if i ~= 4 then
+					f[i]:EnableMouse(db.tooltips)
+					if g then
+						g[i]:EnableMouse(db.tooltips)
+					end
+				end
+			end
+		elseif (...) == "difference" then
+			db.differenceColor = not db.differenceColor
+		elseif (...) == "inspect" then
+			db.disableInspect = not db.disableInspect
 		elseif (...) == "resetenchants" then
 			showInfo = false
 			for i = 1, 17 do
@@ -579,34 +593,41 @@ SlashCmdList.ILEVEL = function(...)
 		end
 	end
 	if showHelp then
-		Print([=[%s/ilevel%s ( 0 | 1 | 2 | inside | color | tooltip | enchants [#] )
- %s0%s - Only show item levels.
- %s1%s - Show item levels and upgrades.
- %s2%s - Show item levels, upgrades and enchants and gems.
- %sinside%s - Change anchor point between INSIDE and OUTSIDE.
- %scolor%s - Change coloring between RARITY and DEFAULT.
- %stooltip%s - ENABLE/DISABLE show Enchant/Gem-tooltips.
-   - Works only when setting is %s2%s and anchor is set to %sOUTSIDE%s.
- %senchants [#]%s - ENABLE/DISABLE show missing Enchants for slot #.
+		Print([=[%s ( 0 | 1 | 2 | inside | color | tooltip | difference | enchants [#] )
+ %s - Only show item levels.
+ %s - Show item levels and upgrades.
+ %s - Show item levels, upgrades and enchants and gems.
+ %s - Change anchor point between INSIDE and OUTSIDE.
+ %s - Change coloring between RARITY and DEFAULT.
+ %s - ENABLE/DISABLE show Enchant/Gem-tooltips.
+   - Works only when setting is %s and anchor is set to %s.
+ %s - ENABLE/DISABLE coloring based on itemlevel difference to averate item level.
+ %s - ENABLE/DISABLE showing itemLevels on IspectFrame (Changing this ReloadUI to work).
+ %s - ENABLE/DISABLE show missing Enchants for slot #.
    - Ommit # to list slots and their current settings.
- %sresetenchants%s - Reset 'Show missing Enchants' -settings to defaults.]=],
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE)
+ %s - Reset 'Show missing Enchants' -settings to defaults.]=],
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(SLASH_ILEVEL1),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("0"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("1"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("2"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("inside"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("color"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("tooltip"),
+				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("2"),
+				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("OUTSIDE"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("difference"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("inspect"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("enchants [#]"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("resetenchants")
+		)
 	end
 	if showInfo then
-		Print("Current settings are: %s%s%s / %s%s%s / %s%s%s / %s%s%s",
-			_G.NORMAL_FONT_COLOR_CODE, tostring(db.setting), _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, db.inside and "INSIDE" or "OUTSIDE", _G.FONT_COLOR_CODE_CLOSE,
-			_G.NORMAL_FONT_COLOR_CODE, db.color and "RARITY" or "DEFAULT", _G.FONT_COLOR_CODE_CLOSE,
-			db.tooltips and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.tooltips and "ENABLED" or "DISABLED", _G.FONT_COLOR_CODE_CLOSE)
+		Print("Current settings: %s / %s / C: %s / TT: %s / I: %s",
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(tostring(db.setting)),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(db.inside and "INSIDE" or "OUTSIDE"),
+			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(db.differenceColor and "DIFFERENCE" or (db.color and "RARITY" or "DEFAULT")),
+			db.tooltips and _G.GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED") or _G.RED_FONT_COLOR:WrapTextInColorCode("DISABLED"),
+			db.disableInspect and _G.RED_FONT_COLOR:WrapTextInColorCode("DISABLED") or _G.GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED")
+			)
 	end
 end
