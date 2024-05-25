@@ -2,9 +2,11 @@ local ADDON_NAME = ...
 local _G = _G
 local g, db -- Inspect Frame itemLevels / Settings on how much we show, where we anchor stuff and how we color it
 local isWrathClassic = (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_WRATH_CLASSIC)
+local isCataClassic = (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_CATACLYSM_CLASSIC)
+local isSomeClassic = (isWrathClassic or isCataClassic)
 local DBDefaults = { -- Default settings for new users
 	setting = 2,
-	inside = (isWrathClassic) and true or false,
+	inside = (isSomeClassic) and true or false,
 	color = false,
 	tooltips = false,
 	differenceColor = false,
@@ -14,19 +16,19 @@ local DBDefaults = { -- Default settings for new users
 		[2] = false, -- Neck
 		[3] = false, -- Shoulder
 		[4] = false, -- Shirt
-		[5] = (isWrathClassic) and true or true, -- Chest
+		[5] = (isSomeClassic) and true or true, -- Chest
 		[6] = false, -- Waist
 		[7] = false, -- Legs
-		[8] = (isWrathClassic) and true or true, -- Feet
-		[9] = (isWrathClassic) and true or true, -- Wrist
-		[10] = (isWrathClassic) and true or false, -- Hands
-		[11] = (isWrathClassic) and true or true, -- Finger0
-		[12] = (isWrathClassic) and true or true, -- Finger1
+		[8] = (isSomeClassic) and true or true, -- Feet
+		[9] = (isSomeClassic) and true or true, -- Wrist
+		[10] = (isSomeClassic) and true or false, -- Hands
+		[11] = (isSomeClassic) and true or true, -- Finger0
+		[12] = (isSomeClassic) and true or true, -- Finger1
 		[13] = false, -- Trinket0
 		[14] = false, -- Trinket1
-		[15] = (isWrathClassic) and true or true, -- Back
-		[16] = (isWrathClassic) and true or true, -- Mainhand
-		[17] = (isWrathClassic) and true or true, -- Offhand
+		[15] = (isSomeClassic) and true or true, -- Back
+		[16] = (isSomeClassic) and true or true, -- Mainhand
+		[17] = (isSomeClassic) and true or true, -- Offhand
 	}
 }
 local f = CreateFrame("Frame", nil, _G.PaperDollFrame) -- iLevel number frame for Character
@@ -56,7 +58,7 @@ local function Print(text, ...)
 	end
 end -- Print
 
-local maxSlots = (isWrathClassic) and 18 or 17
+local maxSlots = (isSomeClassic) and 18 or 17
 local slotTable = { -- Slot names in right order
 	"HeadSlot",
 	"NeckSlot",
@@ -76,7 +78,7 @@ local slotTable = { -- Slot names in right order
 	"MainHandSlot",
 	"SecondaryHandSlot"
 }
-if (isWrathClassic) then slotTable[#slotTable + 1] = "RangedSlot" end
+if (isSomeClassic) then slotTable[#slotTable + 1] = "RangedSlot" end
 
 local anchorStrings, createStrings
 do -- Create and Anchor strings based on settings
@@ -163,7 +165,7 @@ do -- Create and Anchor strings based on settings
 
 		if frame == f then
 			frame:SetFrameLevel(_G.CharacterHeadSlot:GetFrameLevel())
-			if (isWrathClassic) then
+			if (isSomeClassic) then
 				frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
 				frame["avg"]:SetPoint("BOTTOM", _G.CharacterModelFrame, "BOTTOM", 0, 18*yo)
 				frame.fancyLeft = _createFancy(frame, frame["avg"], true)
@@ -172,7 +174,7 @@ do -- Create and Anchor strings based on settings
 		else
 			frame:SetFrameLevel(_G.InspectHeadSlot:GetFrameLevel())
 			frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-			if (isWrathClassic) then
+			if (isSomeClassic) then
 				frame["avg"]:SetPoint("BOTTOM", _G.InspectModelFrame, "BOTTOM", 0, 3*yo)
 			else
 				frame["avg"]:SetPoint("TOP", _G.InspectModelFrameControlFrame, "BOTTOM", 0, -yo)
@@ -397,7 +399,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 							local itemCountFix = (isOffhandEquipped == true) and 1 or 2 -- Remove Shirt or Shirt+Offhand
 							local finalAvgItemLevel = math.floor(totalIlvl / (maxSlots - itemCountFix))
 							local finalAvgQualityLevel = math.floor(totalQlvl / (maxSlots - itemCountFix))
-							if ((isWrathClassic) and unit == "player") or unit ~= "player" then
+							if ((isSomeClassic) and unit == "player") or unit ~= "player" then
 								frame["avg"]:SetFormattedText("%s%d%s", _G.ITEM_QUALITY_COLORS[finalAvgQualityLevel].hex, finalAvgItemLevel, _G.FONT_COLOR_CODE_CLOSE)
 							end
 
