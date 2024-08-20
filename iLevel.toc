@@ -1,6 +1,4 @@
-## Interface: 110002
-## Interface-Wrath: 30403
-## Interface-Cata: 40400
+## Interface: 30403, 40400, 110002
 ## Author: Sanex (Arathor EU)
 ## Title: iLevel
 ## Version: @project-version@
