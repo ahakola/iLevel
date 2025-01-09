@@ -1,4 +1,4 @@
-## Interface: 30403, 40401, 110005
+## Interface: 30403, 40401, 110007
 ## Author: Sanex (Arathor EU)
 ## Title: iLevel
 ## Version: @project-version@
