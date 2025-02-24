@@ -29,7 +29,8 @@ local DBDefaults = { -- Default settings for new users
 		[15] = (isSomeClassic) and true or true, -- Back
 		[16] = (isSomeClassic) and true or true, -- Mainhand
 		[17] = (isSomeClassic) and true or true, -- Offhand
-	}
+	},
+	debug = false
 }
 local f = CreateFrame("Frame", nil, _G.PaperDollFrame) -- iLevel number frame for Character
 f:RegisterEvent("ADDON_LOADED")
@@ -231,8 +232,14 @@ do -- Scan tooltip for sockets and upgrade levels
 
 		local n = {}
 		for i = 1, 10 do -- Get all textures from Tooltip (Gems etc.)
-			if textures[i]:IsShown() then
-				n[#n + 1] = textures[i]:GetTexture()
+			local tex = textures[i]:GetTexture() or textures[i]:GetTextureFileID()
+			if tex and tex:IsShown() then
+				n[#n + 1] = tex
+				if db.debug then
+					Print("+", i, #n, tex or "n/a")
+				end
+			elseif db.debug then
+				Print("-", i, tex or "n/a")
 			end
 		end
 
@@ -530,7 +537,7 @@ f:SetScript("OnEvent", OnEvent)
 SLASH_ILEVEL1 = "/ilevel"
 SlashCmdList.ILEVEL = function(...)
 	local showHelp, showInfo = true, true
-	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "difference" or (...) == "inspect" or (...) == "resetenchants" or (...) == "enchants" or strmatch((...), "enchants %d+") then
+	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "difference" or (...) == "inspect" or (...) == "resetenchants" or (...) == "enchants" or strmatch((...), "enchants %d+") or (...) == "debug" then
 		showHelp = false
 		-- Save settings
 		if (...) == "inside" then
@@ -582,6 +589,9 @@ SlashCmdList.ILEVEL = function(...)
 					_G.NORMAL_FONT_COLOR_CODE, n, _G.FONT_COLOR_CODE_CLOSE, _G[strupper(slotTable[n])],
 					db.enchantsTable[n] and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.enchantsTable[n] and "True" or "False", _G.FONT_COLOR_CODE_CLOSE)
 			end
+		elseif (...) == "debug" then
+			db.debug = not db.debug
+			Print("Debug:", db.debug and _G.GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED") or _G.RED_FONT_COLOR:WrapTextInColorCode("DISABLED"))
 		else
 			db.setting = tonumber((...))
 		end
