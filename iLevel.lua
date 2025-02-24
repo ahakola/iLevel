@@ -168,7 +168,7 @@ do -- Create and Anchor strings based on settings
 			frame:SetFrameLevel(_G.CharacterHeadSlot:GetFrameLevel())
 			if (isSomeClassic) then
 				frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-				frame["avg"]:SetPoint("BOTTOM", _G.CharacterModelFrame, "BOTTOM", 0, 18*yo)
+				frame["avg"]:SetPoint("BOTTOM", _G.CharacterModelScene, "BOTTOM", 0, 18*yo)
 				frame.fancyLeft = _createFancy(frame, frame["avg"], true)
 				frame.fancyRight = _createFancy(frame, frame["avg"], false)
 			end
