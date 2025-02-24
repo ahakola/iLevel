@@ -224,7 +224,7 @@ do -- Scan tooltip for sockets and upgrade levels
 	local S_ENCHANTED_TOOLTIP_LINE =  "^" .. gsub(_G.ENCHANTED_TOOLTIP_LINE, "%%s", "(.+)") -- https://www.townlong-yak.com/framexml/8.3/GlobalStrings.lua#5500, https://wow.gamepedia.com/HOWTO:_Use_Pattern_Matching
 
 	-- Expose the API:
-	function TooltipScanItem(itemLink, isEnchanted, isGem)
+	function TooltipScanItem(itemLink, isEnchanted, isGem, slotId)
 		if not itemLink then return end
 
 		-- Pass the item link to the tooltip:
@@ -233,13 +233,11 @@ do -- Scan tooltip for sockets and upgrade levels
 		local n = {}
 		for i = 1, 10 do -- Get all textures from Tooltip (Gems etc.)
 			local tex = textures[i]:GetTexture() or textures[i]:GetTextureFileID()
-			if tex and tex:IsShown() then
+			if tex and textures[i]:IsShown() then
 				n[#n + 1] = tex
 				if db.debug then
-					Print("+", i, #n, tex or "n/a")
+					Print("+", slotTable[slotId], "-", i, "/", #n, "-", tex, "|T" .. tex .. ":0:0:0:0:32:32:2:30:2:30|t")
 				end
-			elseif db.debug then
-				Print("-", i, tex or "n/a")
 			end
 		end
 
@@ -336,7 +334,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 					local inventoryType = item:GetInventoryType()
 					frame[slotId].itemQualityColor = item:GetItemQualityColor()
 
-					local itemLevel, currentUpgradeLevel, maxUpgradeLevel, currentEnchant, sockets = TooltipScanItem(link, (enchantId and enchantId ~= ""))
+					local itemLevel, currentUpgradeLevel, maxUpgradeLevel, currentEnchant, sockets = TooltipScanItem(link, (enchantId and enchantId ~= ""), false, slotId)
 					frame[slotId].itemLevel = itemLevel or item:GetCurrentItemLevel() or ""
 
 					-- Upgrades
@@ -365,7 +363,7 @@ do -- Update saved item data per slot and refresh text strings at the same time
 
 						local gemName, gemLink = GetItemGem(link, t)
 						if gemName then
-							local gemStat = TooltipScanItem(gemLink, nil, true)
+							local gemStat = TooltipScanItem(gemLink, nil, true, slotId)
 							if db.color then
 								local _, _, colorHex = string.find(gemLink, "|cff(%x*)")
 								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|cff" .. colorHex .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat .. "|r") or ""))
