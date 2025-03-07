@@ -232,8 +232,8 @@ do -- Scan tooltip for sockets and upgrade levels
 
 		local n = {}
 		for i = 1, 10 do -- Get all textures from Tooltip (Gems etc.)
-			local tex = textures[i]:GetTexture() or textures[i]:GetTextureFileID()
-			if tex and textures[i]:IsShown() then
+			if textures[i]:IsShown() then
+				local tex = textures[i]:GetTexture() or textures[i]:GetTextureFileID()
 				n[#n + 1] = tex
 				if db.debug then
 					Print("+", slotTable[slotId], "-", i, "/", #n, "-", tex, "|T" .. tex .. ":0:0:0:0:32:32:2:30:2:30|t")
