@@ -366,7 +366,9 @@ do -- Update saved item data per slot and refresh text strings at the same time
 							local gemStat = TooltipScanItem(gemLink, nil, true, slotId)
 							if db.color then
 								local _, _, colorHex = string.find(gemLink, "|cff(%x*)")
-								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|cff" .. colorHex .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat .. "|r") or ""))
+								if colorHex then
+									frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|cff" .. colorHex .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat .. "|r") or ""))
+								end
 							else
 								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat) or ""))
 							end
