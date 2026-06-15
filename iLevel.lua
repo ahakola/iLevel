@@ -1,41 +1,47 @@
 local ADDON_NAME = ...
-local _G = _G
-local g, db -- Inspect Frame itemLevels / Settings on how much we show, where we anchor stuff and how we color it
-local isWrathClassic = (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_WRATH_CLASSIC)
-local isCataClassic = (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_CATACLYSM_CLASSIC)
-local isSomeClassic = (isWrathClassic or isCataClassic)
+
+local isWrathClassic = (WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC)
+local isCataClassic = (WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC)
+local isMoPClassic = (WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC)
+local isRelicClassic = (isWrathClassic or isCataClassic) -- Relics were removed in MoP
+local isAnyClassic = (isWrathClassic or isCataClassic or isMoPClassic)
+
+local db, g
 local DBDefaults = { -- Default settings for new users
 	setting = 2,
-	inside = (isSomeClassic) and true or false,
+	inside = (isAnyClassic) and true or false,
 	color = false,
-	tooltips = false,
 	differenceColor = false,
 	disableInspect = false,
 	enchantsTable = { -- Slots you can enchant in current xpack (aka the only ones worthwhile of your time)
-		[1] = false, -- Head
-		[2] = false, -- Neck
-		[3] = false, -- Shoulder
-		[4] = false, -- Shirt
-		[5] = (isSomeClassic) and true or true, -- Chest
-		[6] = false, -- Waist
-		[7] = false, -- Legs
-		[8] = (isSomeClassic) and true or true, -- Feet
-		[9] = (isSomeClassic) and true or true, -- Wrist
-		[10] = (isSomeClassic) and true or false, -- Hands
-		[11] = (isSomeClassic) and true or true, -- Finger0
-		[12] = (isSomeClassic) and true or true, -- Finger1
-		[13] = false, -- Trinket0
-		[14] = false, -- Trinket1
-		[15] = (isSomeClassic) and true or true, -- Back
-		[16] = (isSomeClassic) and true or true, -- Mainhand
-		[17] = (isSomeClassic) and true or true, -- Offhand
+													--			Era		Wrath	MoP		Legion	SL		TWW		TLT
+													--				BC		Cata	WoD		BfA		DF		MN
+													-- ========|===|===|===|===|===|===|===|===|===|===|===|===|===|
+		[1] = (isAnyClassic) and false or true,		-- Head													 x	
+		[2] = false,								-- Neck							 x	 x						
+		[3] = true,									-- Shoulder							 x					 x	
+		[4] = false,								-- Shirt
+													-- -------------------------------------------------------------
+		[5] = true,									-- Chest	 x	 x	 x	 x	 x				 x	 x	 x	 x	
+		[6] = false,								-- Waist													
+		[7] = false,								-- Legs														
+		[8] = true,									-- Feet		 x	 x	 x	 x	 x				 x	 x	 x	 x	
+													-- -------------------------------------------------------------
+		[9] = (isAnyClassic) and true or false,		-- Wrist	 x	 x	 x	 x	 x			 x	 x	 x	 x		
+		[10] = (isAnyClassic) and true or false,	-- Hands	 x	 x	 x	 x	 x		 x	 x	 x				
+		[11] = (isAnyClassic) and false or true,	-- Finger0						 x	 x	 x	 x	 x	 x	 x	
+		[12] = (isAnyClassic) and false or true,	-- Finger1						 x	 x	 x	 x	 x	 x	 x	
+													-- -------------------------------------------------------------
+		[13] = false,								-- Trinket0													
+		[14] = false,								-- Trinket1													
+		[15] = (isAnyClassic) and true or false,	-- Back		 x	 x	 x	 x	 x	 x	 x		 x	 x	 x		
+		[16] = true,								-- Mainhand	 x	 x	 x	 x	 x	 x	 x	 x	 x	 x	 x	 x	
+		[17] = true,								-- Offhand	 x	 x	 x	 x	 x	 x	 x	 x	 x	 x	 x	 x	
+													-- =============================================================
+													-- https://warcraft.wiki.gg/wiki/Enchanting_formulas
 	},
 	debug = false
 }
-local f = CreateFrame("Frame", nil, _G.PaperDollFrame) -- iLevel number frame for Character
-f:RegisterEvent("ADDON_LOADED")
-
-MIN_PLAYER_LEVEL_FOR_ITEM_LEVEL_DISPLAY = 1 -- Enable itemlevel display for characters under level 90
 
 local function initDB(a, b) -- Check DB settings, Defaults-table, Settings-table
 	if type(a) ~= "table" then return {} end
@@ -49,6 +55,17 @@ local function initDB(a, b) -- Check DB settings, Defaults-table, Settings-table
 
 	return b
 end -- initDB
+local function Debug(text, ...)
+	if (not db) or (not db.debug) then return end
+
+	if text then
+		if text:match("%%[dfqsx%d%.]") then
+			(DEBUG_CHAT_FRAME or (ChatFrame3:IsShown() and ChatFrame3 or ChatFrame4)):AddMessage("|cffff9999"..ADDON_NAME..":|r " .. format(text, ...))
+		else
+			(DEBUG_CHAT_FRAME or (ChatFrame3:IsShown() and ChatFrame3 or ChatFrame4)):AddMessage("|cffff9999"..ADDON_NAME..":|r " .. strjoin(" ", text, tostringall(...)))
+		end
+	end
+end -- Debug
 local function Print(text, ...)
 	if text then
 		if text:match("%%[dfqs%d%.]") then
@@ -59,7 +76,8 @@ local function Print(text, ...)
 	end
 end -- Print
 
-local maxSlots = (isSomeClassic) and 18 or 17
+--isShown = C_PaperDollInfo.IsRangedSlotShown()
+local maxSlots = (isRelicClassic) and 18 or 17
 local slotTable = { -- Slot names in right order
 	"HeadSlot",
 	"NeckSlot",
@@ -79,566 +97,844 @@ local slotTable = { -- Slot names in right order
 	"MainHandSlot",
 	"SecondaryHandSlot"
 }
-if (isSomeClassic) then slotTable[#slotTable + 1] = "RangedSlot" end
+if (isRelicClassic) then slotTable[#slotTable + 1] = "RangedSlot" end
+local leftItemSlots = {
+	[1] = true, --"HeadSlot",
+	[2] = true, --"NeckSlot",
+	[3] = true, --"ShoulderSlot",
+	[5] = true, --"ChestSlot",
+	[9] = true, --"WristSlot",
+	[15] = true, --"BackSlot",
+	[17] = true, --"SecondaryHandSlot"
+	[18] = true, --"RangedSlot"
+}
+local bottomItemSlots = {
+	[16] = true, --"MainHandSlot",
+	[17] = true, --"SecondaryHandSlot"
+	[18] = true, --"RangedSlot"
+}
 
-local anchorStrings, createStrings
-do -- Create and Anchor strings based on settings
-	local xo, yo = 8, 3 -- X-offset, Y-offset
+local f = CreateFrame("Frame", nil, PaperDollItemsFrame)
+f.itemLevels = {}
+f.qualities = {}
+for slot = 1, maxSlots do
+	f.itemLevels[slot] = 0
+	f.qualities[slot] = 0
+end
+f.isOffhandEquipped = false
+f.isWeaponArtifact = false
+f.artifactWeaponLevel = 0
+f.averageItemLevel = 0
+f.averageQuality = Enum.ItemQuality.Poor
 
-	local function _returnPoints(slotId) -- Return anchoring points of string #, also because I'm lazy, I'm reusing this to return Tooltip achoring points as well
+local function __poolRestterFunc(pool, fontString)
+	fontString:ClearAllPoints()
+	fontString:SetText("")
+	fontString:Hide()
+end
+
+-- CreateFontStringPool(parent, layer, subLayer, fontStringTemplate, resetterFunc) - Constructs standard FontStrings.
+f.pool = CreateFontStringPool(f, "OVERLAY", nil, "GameFontNormalOutline", __poolRestterFunc)
+
+local __getString
+do
+	local xo, yo = 10, 8 -- X-offset, Y-offset
+	local function __returnPoints(itemSlot)
+		local slotId = itemSlot:GetID()
+
+		local isLeft = leftItemSlots[slotId] and true or false -- itemSlot.IsLeftSide and true or false -- Doesn't exist on Inspect
+		local isVertical = bottomItemSlots[slotId] and true or false -- itemSlot.verticalFlyout and true or false -- Doesn't exist on Inspect
 		if db.inside then -- Inside
-			return "BOTTOM", "BOTTOM", 2, 3, "CENTER", "BOTTOM", "ANCHOR_CURSOR"
-		else
-			if slotId <= 5 or slotId == 15 or slotId == 9 then -- Left side
-				return "LEFT", "RIGHT", xo, 0, "LEFT", "MIDDLE", "ANCHOR_RIGHT"
-			elseif slotId <= 14 then -- Right side
-				return "RIGHT", "LEFT", -xo, 0, "RIGHT", "MIDDLE", "ANCHOR_LEFT"
-			else -- Weapon slots
-				--return "BOTTOM", "TOP", 2, yo, "CENTER", "BOTTOM"
-				return "BOTTOM", "TOP", 2, yo, "CENTER", "MIDDLE", "ANCHOR_TOP" -- Try to fix weapon strings sometimes looking bit weird
-			end
-		end
-	end
-
-	local function _createFancy(parent, point, isLeft) -- Create Extra Fancy stuff
-		local r, g, b, aLeft, aRight = .9, .9, .9, (isLeft and 0 or .4), (isLeft and .4 or 0)
-		local fancy = parent:CreateTexture(nil, "BORDER")
-		fancy:SetPoint((isLeft and "RIGHT" or "LEFT"), point, "CENTER")
-		fancy:SetSize(65, 35)
-		fancy:SetColorTexture(1, 1, 1)
-		fancy:SetGradient("Horizontal", CreateColor(r, g, b, aLeft), CreateColor(r, g, b, aRight))
-
-		fancy.top = parent:CreateTexture(nil, "BORDER")
-		fancy.top:SetPoint("BOTTOM", fancy, "TOP")
-		fancy.top:SetSize(65, 2)
-		fancy.top:SetColorTexture(0, 0, 0)
-		fancy.top:SetGradient("Horizontal", CreateColor(0, 0, 0, 2*aLeft), CreateColor(0, 0, 0, 2*aRight))
-
-		fancy.bottom = parent:CreateTexture(nil, "BORDER")
-		fancy.bottom:SetPoint("TOP", fancy, "BOTTOM")
-		fancy.bottom:SetSize(65, 2)
-		fancy.bottom:SetColorTexture(0, 0, 0)
-		fancy.bottom:SetGradient("Horizontal", CreateColor(0, 0, 0, 2*aLeft), CreateColor(0, 0, 0, 2*aRight))
-
-		return fancy
-	end
-
-	function anchorStrings(frame) -- Anchor strings to right places
-		local point
-		if frame == f then
-			point = "Character"
-		else
-			point = "Inspect"
-		end
-
-		for i = 1, maxSlots do -- Set Point and Justify
-			if i ~= 4 then
-				local parent = _G[ point..slotTable[i] ]
-				local myPoint, parentPoint, x, y, justifyH, justifyV = _returnPoints(i)
-				frame[i].string:ClearAllPoints()
-				frame[i].string:SetPoint(myPoint, parent, parentPoint, x, y)
-				frame[i].string:SetJustifyH(justifyH)
-				frame[i].string:SetJustifyV(justifyV)
-			end
-		end
-	end -- anchorStrings
-
-	local function OnEnter(self) -- Enchant Tooltip OnEnter
-		if (not db.tooltips) or (db.setting < 2) or (db.inside) then return end -- Tooltips ON, Setting 2 and Anchor OUTSIDE
-
-		if self.currentEnchant ~= "" or self.currentSockets ~= "" then
-			GameTooltip:SetOwner(self, select(-1, _returnPoints(self.slotId))) -- https://wow.gamepedia.com/API_GameTooltip_SetOwner
-			if self.currentEnchant then
-				GameTooltip:AddLine(self.currentEnchant, _G.GREEN_FONT_COLOR.r, _G.GREEN_FONT_COLOR.g, _G.GREEN_FONT_COLOR.b, true)
-			end
-			if self.currentSockets then
-				GameTooltip:AddLine(self.currentSockets, 1, 1, 1, true)
-			end
-			GameTooltip:Show()
-		end
-	end
-	local function OnLeave(self) -- Enchant Tooltip OnLeave
-		GameTooltip:Hide()
-	end
-
-	function createStrings(frame) -- Create item level -strings
-		if #frame > 0 then return end
-
-		if frame == f then
-			frame:SetFrameLevel(_G.CharacterHeadSlot:GetFrameLevel())
-			if (isSomeClassic) then
-				frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-				frame["avg"]:SetPoint("BOTTOM", _G.CharacterModelScene, "BOTTOM", 0, 18*yo)
-				frame.fancyLeft = _createFancy(frame, frame["avg"], true)
-				frame.fancyRight = _createFancy(frame, frame["avg"], false)
-			end
-		else
-			frame:SetFrameLevel(_G.InspectHeadSlot:GetFrameLevel())
-			frame["avg"] = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-			if (isSomeClassic) then
-				frame["avg"]:SetPoint("BOTTOM", _G.InspectModelFrame, "BOTTOM", 0, 3*yo)
+			--return "BOTTOM", "BOTTOM", 2, 2
+			if isLeft then
+				return "TOP", "TOP", xo, -2
 			else
-				frame["avg"]:SetPoint("TOP", _G.InspectModelFrameControlFrame, "BOTTOM", 0, -yo)
+				return "TOP", "TOP", -xo, -2
 			end
-			frame.fancyLeft = _createFancy(frame, frame["avg"], true)
-			frame.fancyRight = _createFancy(frame, frame["avg"], false)
-		end
-
-		for i = 1, maxSlots do
-			if i ~= 4 then
-				frame[i] = CreateFrame("Frame", nil, frame)
-				local s = frame[i]:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline") -- Revert the previous fix, the smaller text size made it bit too hard to read the icons
-				frame[i]:SetAllPoints(s) -- Fontstring anchoring hack by SDPhantom https://www.wowinterface.com/forums/showpost.php?p=280136&postcount=6
-				frame[i].string = s; frame[i].slotId = i; frame[i].itemLevel = ""; frame[i].upgradeString = ""; frame[i].finalString = "%1$s"
-				frame[i].enchantString = ""; frame[i].currentEnchant = ""; frame[i].socketString = ""; frame[i].currentSockets = ""
-				frame[i]:SetScript("OnEnter", OnEnter); frame[i]:SetScript("OnLeave", OnLeave)
-				frame[i]:EnableMouse(db.tooltips)
+		elseif isVertical then -- Weapon
+			return "BOTTOM", "TOP", 0, yo
+		else
+			if isLeft then -- Left
+				return "LEFT", "RIGHT", xo, 0
+			else -- Right
+				return "RIGHT", "LEFT", -xo, 0
 			end
 		end
-
-		anchorStrings(frame)
-	end -- createStrings
-end -- anchorStrings, createStrings
-
--- Upgrade scanning inspired by Phanx @ http://www.wowinterface.com/forums/showthread.php?p=271406
--- Socket scanning inspired by Phanx @ https://www.wowinterface.com/forums/showpost.php?p=319704&postcount=2
-local TooltipScanItem
-do -- Scan tooltip for sockets and upgrade levels
-	-- Generate a unique name for the tooltip:
-	local tooltipName = ADDON_NAME .. "ScanningTooltip" .. random(100000, 10000000)
-
-	-- Create the hidden tooltip object:
-	local tooltip = CreateFrame("GameTooltip", tooltipName, _G.UIParent, "GameTooltipTemplate")
-	tooltip:SetOwner(_G.UIParent, "ANCHOR_NONE")
-
-	-- Build a list of the tooltip's texture objects:
-	local textures = {}
-	for i = 1, 10 do
-		textures[i] = _G[tooltipName .. "Texture" .. i]
 	end
 
-	-- Construct your search patterns based on the existing global strings:
-	local S_ITEM_LEVEL = "^" .. gsub(ITEM_LEVEL, "%%d", "(%%d+)")
-	local S_UPGRADE_LEVEL = "^" .. gsub(_G.ITEM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)")
-	local S_HEIRLOOM_LEVEL = "^" .. gsub(_G.HEIRLOOM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)")
-	local S_ENCHANTED_TOOLTIP_LINE =  "^" .. gsub(_G.ENCHANTED_TOOLTIP_LINE, "%%s", "(.+)") -- https://www.townlong-yak.com/framexml/8.3/GlobalStrings.lua#5500, https://wow.gamepedia.com/HOWTO:_Use_Pattern_Matching
+	function __getString(itemSlot, poolParent)
+		local textString
+		local i = 1
+		for activeText in poolParent.pool:EnumerateActive() do
+			local point, relativeTo, relativePoint, offsetX, offsetY = activeText:GetPoint()
 
-	-- Expose the API:
-	function TooltipScanItem(itemLink, isEnchanted, isGem, slotId)
-		if not itemLink then return end
-
-		-- Pass the item link to the tooltip:
-		tooltip:SetHyperlink(itemLink)
-
-		local n = {}
-		for i = 1, 10 do -- Get all textures from Tooltip (Gems etc.)
-			if textures[i]:IsShown() then
-				local tex = textures[i]:GetTexture() or textures[i]:GetTextureFileID()
-				n[#n + 1] = tex
-				if db.debug then
-					Print("+", slotTable[slotId], "-", i, "/", #n, "-", tex, "|T" .. tex .. ":0:0:0:0:32:32:2:30:2:30|t")
-				end
+			if relativeTo == itemSlot then -- Found old one, reuse it
+				textString = activeText
+				textString:ClearAllPoints()
+				Debug("  __getString (Reuse) ->", itemSlot:GetName(), i, "/", poolParent.pool:GetNumActive())
+				break
 			end
+			i = i + 1
 		end
-
-		local realItemLevel, currentUpgradeLevel, maxUpgradeLevel, currentEnchant
-		for i = 2, tooltip:NumLines() do -- Line 1 is always the name so you can skip it.
-			local text = _G[tooltipName .. "TextLeft" .. i]:GetText()
-			if text and text ~= "" then
-				if isGem then
-					if strmatch(text, "+(%d+)") then -- +50 Crit etc. (Gems, Cogs and Punch Cards)
-						return text
-					elseif strmatch(text, _G.ITEM_SPELL_TRIGGER_ONEQUIP) then -- "Equip:" (Punch Cards)
-						return strmatch(text, _G.ITEM_SPELL_TRIGGER_ONEQUIP .. " (.+)")
-					end
-				elseif strmatch(text, S_ITEM_LEVEL) then
-					realItemLevel = strmatch(text, S_ITEM_LEVEL)
-				elseif strmatch(text, S_UPGRADE_LEVEL) then
-					currentUpgradeLevel, maxUpgradeLevel = strmatch(text, S_UPGRADE_LEVEL)
-				elseif strmatch(text, S_HEIRLOOM_LEVEL) then
-					currentUpgradeLevel, maxUpgradeLevel = strmatch(text, S_HEIRLOOM_LEVEL)
-				elseif isEnchanted and strmatch(text, S_ENCHANTED_TOOLTIP_LINE) then
-					currentEnchant = strmatch(text, S_ENCHANTED_TOOLTIP_LINE)
-				end
-
-				if realItemLevel and currentUpgradeLevel and ((not isEnchanted) or (isEnchanted and currentEnchant)) then
-					return tonumber(realItemLevel), tonumber(currentUpgradeLevel), tonumber(maxUpgradeLevel), currentEnchant, n
-				end
-			end
+		if not textString then -- Didn't find old string, need new one
+			textString = poolParent.pool:Acquire()
+			Debug("  __getString (New) ->", itemSlot:GetName(), i, "/", poolParent.pool:GetNumActive())
 		end
+		local myPoint, yourPoint, xOff, yOff = __returnPoints(itemSlot)
+		textString:SetPoint(myPoint, itemSlot, yourPoint, xOff, yOff)
 
-		return realItemLevel and tonumber(realItemLevel) or nil, currentUpgradeLevel and tonumber(currentUpgradeLevel) or nil, maxUpgradeLevel and tonumber(maxUpgradeLevel) or nil, currentEnchant, n
+		return textString
 	end
-end -- TooltipScanItem
+end -- __getString
 
-local function getFinalString(slotId, itemQualityColor, isHex) -- Construct the itemLevel-string
-	local finalString = "%1$s"
-	local left = (slotId <= 5 or slotId == 15 or slotId == 9 or slotId == 17)
+--[[
+for slot = 1, maxSlots do
+	if slot ~= 4 then
+		local itemSlot = _G["Character" .. slotTable[slot] ]
+		local isLeft = itemSlot.IsLeftSide and true or false
+		local isVertical = itemSlot.verticalFlyout and true or false
+		local textString = f.pool:Acquire()
+		--textString:SetText(slotTable[slot])
+		textString:SetText(slot)
+		if isVertical then -- Weapon
+			textString:SetPoint("BOTTOM", itemSlot, "TOP", 0, yo)
+		else
+			if isLeft then -- Left
+				textString:SetPoint("LEFT", itemSlot, "RIGHT", xo, 0)
+			else -- Right
+				textString:SetPoint("RIGHT", itemSlot, "LEFT", -xo, 0)
+			end
+		end
+		textString:Show()
+	end
+end
+local function __parseItemLink(link)
+	local itemType, linkOptions = LinkUtil.ExtractLink(link)
+	local itemId, enchantId, gemId1, gemId2, gemId3, gemId4, _, _, linkLevel, _, _, itemContext = strsplit(":", linkOptions)
+
+	Debug("  __parseItemLink %s (%s) -> %s - E: %s G: %s", link, itemId, linkLevel,
+		tonumber(enchantId) and GREEN_FONT_COLOR:WrapTextInColorCode("Yes") or RED_FONT_COLOR:WrapTextInColorCode("No"),
+		(tonumber(gemId1) or tonumber(gemId2) or tonumber(gemId3) or tonumber(gemId4)) and GREEN_FONT_COLOR:WrapTextInColorCode("Yes") or RED_FONT_COLOR:WrapTextInColorCode("No")
+	)
+	return tonumber(itemId), tonumber(enchantId), tonumber(gemId1), tonumber(gemId2), tonumber(gemId3), tonumber(gemId4), tonumber(linkLevel)
+end
+]]
+
+local __parseTooltip
+do
+	local ignoredKeys = {
+		lines = true,
+		leftColor = true,
+		rightColor = true,
+	}
+	local indentation = 4
+	local function _tableToString(tbl, depth) -- Convert a lua table into a lua syntactically correct string
+		local d = depth or 1
+		local result = "{\n"
+		for k, v in pairs(tbl) do
+			if type(v) ~= "function" and type(k) ~= "function" and (not ignoredKeys[k]) then
+				-- Check the key type (ignore any numerical keys - assume its an array)
+				if type(k) == "string" then
+					result = result .. string.rep(" ", d * indentation) .. "[\"" .. k .. "\"] = "
+				else
+					result = result .. string.rep(" ", d * indentation) .. "[" .. k .. "] = "
+				end
+
+				-- Check the value type
+				if type(v) == "table" then
+					result = result .. _tableToString(v, d + 1)
+				elseif type(v) == "string" then
+					result = result .. "\"" .. v .. "\""
+				else
+					result = result .. tostring(v)
+				end
+				result = result .. ",\n"
+			end
+		end
+		-- Remove leading commas from the result
+		if result ~= "{" then
+			result = result:sub(1, result:len()-1)
+		end
+		return result .. "\n" .. string.rep(" ", (d - 1) * indentation) .. "}"
+	end
+
+	local tooltipCache = {}
+	function __parseTooltip(link, slotId)
+		if tooltipCache[link] then -- Check cache
+			local cacheData = tooltipCache[link]
+			Debug("  __parseTooltip (Cache Hit) %s -> I: %d, U: %d / %d, E: %d, G: %s", link, cacheData[1], cacheData[2], cacheData[3], cacheData[4], cacheData[5])
+			return cacheData[1], cacheData[2], cacheData[3], cacheData[4], cacheData[5]
+		end
+
+		local S_UPGRADE_LEVEL = "^" .. gsub(ITEM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)") -- "Upgrade Level: %d/%d"
+		local S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT = "^" .. gsub(HEIRLOOM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)") -- "Heirloom Upgrade Level: %d/%d"
+
+		local itemLevel, currentUpgradeLevel, maxUpgradeLevel = 0, 0, 0
+		local gemInfo = ""
+
+		-- Parse Tooltip
+		--/tinspect C_TooltipInfo.GetHyperlink(GetInventoryItemLink("player", 1))
+		local tooltipData = C_TooltipInfo.GetHyperlink(link)
+
+		local offsetX = (leftItemSlots[slotId]) and 1 or 0
+		local offsetY = -2
+		for i, line in ipairs(tooltipData.lines) do
+			-- GemSockets
+			if line.type == Enum.TooltipDataLineType.GemSocket then -- 3
+				if line.gemIcon then
+					-- Example: 1995542 (gemItemID 153708)
+					gemInfo = gemInfo .. format("|T%d:0:0:0:" .. offsetY .. ":32:32:2:30:2:30|t", line.gemIcon)
+
+				else
+					-- Example: "Prismatic" or "Meta"
+					--[[
+					SocketSlot Background Atlases:
+						socket-blue-background
+						socket-cogwheel-background
+						socket-domination-background
+						socket-hydraulic-background
+						socket-meta-background
+						socket-prismatic-background
+						socket-punchcard-blue-background
+						socket-punchcard-red-background
+						socket-punchcard-yellow-background
+						socket-red-background
+						socket-yellow-background
+					]]--
+					--gemInfo = gemInfo .. CreateAtlasMarkup("socket-" .. strlower(line.socketType) .. "-background") -- Hope this works
+
+					--[[
+					Empty Socket Atlases:
+						auctionhouse-icon-socket
+						character-emptysocket
+					]]--
+					gemInfo = gemInfo .. CreateAtlasMarkup("character-emptysocket", 0, 0, offsetX, offsetY) -- Fallback choise
+
+				end
+				Debug("    - GemSocket:", line.gemIcon, line.socketType)
+
+			-- Itemlevel
+			elseif line.type == Enum.TooltipDataLineType.ItemLevel then -- 31
+				itemLevel = line.itemLevel
+				Debug("    - itemlevel:", itemLevel)
+
+			-- Debug for possibly interesting stuff
+			else
+				local interestingTypes = {
+					[4] = true, -- AzeriteEssenceSlot
+					[5] = true, -- AzeriteEssencePower
+					[30] = true, -- GemSocketEnchantment
+					[32] = true, -- ItemUpgradeLevel
+					[35] = true, -- ItemQuality
+				}
+				if interestingTypes[line.type] then
+					Debug("\n%s\n====================\n%s\n====================\n%s",
+						RED_FONT_COLOR:WrapTextInColorCode("!!! FOUND NEW STUFF"),
+						_tableToString(line),
+						RED_FONT_COLOR:WrapTextInColorCode("!!! FOUND NEW STUFF")
+					)
+					--assert(false, "Please report this in a new issue ticket either at Curseforge or Github:\n" .. link .. "\n" .. _tableToString(line))
+				end
+			end
+
+			-- Upgrade info
+			if line.leftText then
+				if strmatch(line.leftText, S_UPGRADE_LEVEL) then
+					currentUpgradeLevel, maxUpgradeLevel = strmatch(line.leftText, S_UPGRADE_LEVEL)
+
+					Debug("    - upgradeLevel: %s / %s", currentUpgradeLevel, maxUpgradeLevel)
+				elseif strmatch(line.leftText, S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT) then
+					currentUpgradeLevel, maxUpgradeLevel = strmatch(line.leftText, S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT)
+
+					Debug("    - upgradeLevel: %s / %s (Heirloom)", currentUpgradeLevel, maxUpgradeLevel)
+				end
+			end
+		end
+
+		-- Parse link for Enchant info
+		local _, linkOptions = LinkUtil.ExtractLink(link)
+		local _, enchantId = strsplit(":", linkOptions)
+
+		-- Strings into numbers
+		currentUpgradeLevel = tonumber(currentUpgradeLevel)
+		maxUpgradeLevel = tonumber(maxUpgradeLevel)
+		enchantId = tonumber(enchantId)
+
+		Debug("  __parseTooltip %s -> I: %d, U: %d / %d, E: %d, G: %s", link, itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo)
+		tooltipCache[link] = { itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo }
+		return itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo
+	end
+end -- __parseTooltip
+
+local function __buildString(slotId, itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo)
+	--[[
+		db.setting
+		0 - Only show item levels.
+		1 - Show item levels and upgrades.
+		2 - Show item levels, upgrades and enchants and gems.
+	]]--
+	local finalString = tostring(itemLevel)
+	local textUpgrade, textEnchant = "", ""
 
 	if db.setting >= 1 then
-		if db.inside then -- Inside
-			finalString = (db.setting == 1) and "%2$s\n%1$s" or (left) and "%3$s%4$s%2$s\n%1$s" or "%2$s%4$s%3$s\n%1$s" -- 1: Either	2: Left			2: Right
-		elseif (left) then -- Left
-			finalString = (db.setting == 1) and "%1$s%2$s" or slotId == 17 and "%3$s%4$s\n%1$s%2$s" or "%1$s%2$s%3$s%4$s" -- 1: Left	2: slotId 17	2: Left
-		else -- Right
-			finalString = (db.setting == 1) and "%2$s%1$s" or slotId == 16 and "%3$s%4$s\n%2$s%1$s" or "%4$s%3$s%2$s%1$s" -- 1: Rightt	2: slotId 16	2: Right
+		-- Upgrade
+		--[[
+		UpArrow Atlases:
+			bags-greenarrow
+			Garr_LevelUpgradeArrow
+			house-reward-green-arrow-up
+			LevelUp-Icon-Arrow
+			loottoast-arrow-green
+			plunderstorm-icon-upgrade
+			poi-door-arrow-up (yellow, needs tinting)
+		]]--
+		if currentUpgradeLevel < maxUpgradeLevel then
+			--textUpgrade = "|TInterface\\PetBattles\\BattleBar-AbilityBadge-Strong:0:0:0:0:32:32:2:30:2:30|t"
+			--textUpgrade = CreateAtlasMarkup("poi-door-arrow-up")
+			textUpgrade = CreateAtlasMarkup("poi-door-arrow-up", 0, 0, 0, 0, 0, 255, 0)
+		end
+
+		if leftItemSlots[slotId] then
+			finalString = finalString .. textUpgrade
+		else
+			finalString = textUpgrade .. finalString
+		end
+
+		if db.setting == 2 then
+			-- Enchant & Gems
+			local offsetX = slotId >= 17 and 2 or (slotId == 16 and -4 or (leftItemSlots[slotId] and 1 or 0))
+			local offsetY = (bottomItemSlots[slotId]) and -1 or -2
+			if enchantId then
+				--textEnchant = "|T136244:0:0:0:0:32:32:2:30:2:30|t"
+				--textEnchant = CreateAtlasMarkup("Mobile-Enchanting")
+				textEnchant = CreateAtlasMarkup("Mobile-Enchanting", 0, 0, offsetX, offsetY)
+			elseif db.enchantsTable[slotId] then
+				textEnchant = CreateAtlasMarkup("Mobile-Enchanting", 0, 0, offsetX, offsetY, 221, 0, 0)
+			end
+
+			if bottomItemSlots[slotId] and (not db.inside) then
+				if slotId == 16 then
+					finalString = gemInfo .. "\n" .. textEnchant .. finalString
+				else
+					finalString = gemInfo .. "\n" .. finalString .. textEnchant
+				end
+			else
+				finalString = finalString .. "\n" .. strtrim(textEnchant .. gemInfo)
+			end
 		end
 	end
 
-	if db.color and itemQualityColor then
-		finalString = (isHex and itemQualityColor or itemQualityColor.hex) .. finalString .. _G.FONT_COLOR_CODE_CLOSE
+	--return strtrim(finalString:gsub("\n\n", "\n"))
+	return strtrim(finalString)
+end -- __buildString
+
+local __queueAverages
+do
+	local function __reColor(parentFrame)
+		Debug("  __reColor:", parentFrame)
+		local bigGap = 20
+		local smallGap = 10
+
+		if parentFrame % 2 == 1 then -- 1 or 3 == Player
+			for activeText in f.pool:EnumerateActive() do
+				local _, relativeTo = activeText:GetPoint()
+				local slotId = relativeTo:GetID()
+
+				local iLevelGap = (f.averageItemLevel - f.itemLevels[slotId])
+				local slotText = activeText:GetText()
+				if iLevelGap >= bigGap then
+					slotText = slotText:gsub("|cnGREEN_FONT_COLOR:", "|cnRED_FONT_COLOR:")
+					Debug("    - P: %s (%s) - %s (>= %d)", slotTable[slotId], slotId, RED_FONT_COLOR:WrapTextInColorCode(iLevelGap), bigGap)
+				elseif iLevelGap >= smallGap then
+					slotText = slotText:gsub("|cnGREEN_FONT_COLOR:", "|cnORANGE_FONT_COLOR:")
+					Debug("    - P: %s (%s) - %s (>= %d)", slotTable[slotId], slotId, ORANGE_FONT_COLOR:WrapTextInColorCode(iLevelGap), smallGap)
+				end
+				activeText:SetText(slotText)
+			end
+		end
+		if parentFrame >= 2 then -- 2 or 3 == Inspect
+			for activeText in g.pool:EnumerateActive() do
+				local _, relativeTo = activeText:GetPoint()
+				local slotId = relativeTo:GetID()
+
+				local iLevelGap = (g.averageItemLevel - g.itemLevels[slotId])
+				local slotText = activeText:GetText()
+				if iLevelGap >= bigGap then
+					slotText = slotText:gsub("|cnGREEN_FONT_COLOR:", "|cnRED_FONT_COLOR:")
+					Debug("    - I: %s (%s) - %s (>= %d)", slotTable[slotId], slotId, RED_FONT_COLOR:WrapTextInColorCode(iLevelGap), bigGap)
+				elseif iLevelGap >= smallGap then
+					slotText = slotText:gsub("|cnGREEN_FONT_COLOR:", "|cnORANGE_FONT_COLOR:")
+					Debug("    - I: %s (%s) - %s (>= %d)", slotTable[slotId], slotId, ORANGE_FONT_COLOR:WrapTextInColorCode(iLevelGap), smallGap)
+				end
+				activeText:SetText(slotText)
+			end
+		end
 	end
 
-	return finalString
-end -- getFinalString
+	local waitLock = 0
+	local function __updateAverages() -- Calculate Averages
+		--[[
+		--------------------------------------------------------------------------------
+		-> 3.3.3
+		Nothing
 
-local updateSlot
-do -- Update saved item data per slot and refresh text strings at the same time
-	--[[
-	local inspectOffhand -- Calculate the Average item level and rarity of inspect unit's gear
-	local inspectLevels, inspectRarity = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
-	local function _updateAverageItemLevel() -- Update the Average Item Level text of Inspect Unit
-		local raritySum, iLvlSum = 0, 0
+		4.0.1 -> 4.2.0
+		local avgItemLevel = GetAverageItemLevel();
+		avgItemLevel = floor(avgItemLevel);
+
+
+		4.3.0 -> 6.1.0
+		local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel();
+		avgItemLevel = floor(avgItemLevel);
+		avgItemLevelEquipped = floor(avgItemLevelEquipped);
+
+
+		6.2.0 -> 6.2.0
+		local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvP = GetAverageItemLevel();
+		avgItemLevel = floor(avgItemLevel);
+		avgItemLevelEquipped = floor(avgItemLevelEquipped);
+
+		7.0.3 -> 7.3.5
+		local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel();
+		avgItemLevel = floor(avgItemLevel);
+		avgItemLevelEquipped = floor(avgItemLevelEquipped);
+
+		8.0.1 -> 9.0.1
+		local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel();
+		local minItemLevel = C_PaperDollInfo.GetMinItemLevel();
+
+		local displayItemLevel = math.max(minItemLevel or 0, avgItemLevelEquipped);
+
+		displayItemLevel = floor(displayItemLevel);
+		avgItemLevel = floor(avgItemLevel);
+
+
+		9.1.0 ->
+		local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvP = GetAverageItemLevel();
+		local minItemLevel = C_PaperDollInfo.GetMinItemLevel();
+
+		local displayItemLevel = math.max(minItemLevel or 0, avgItemLevelEquipped);
+
+		displayItemLevel = floor(displayItemLevel);
+		avgItemLevel = floor(avgItemLevel);
+		--------------------------------------------------------------------------------
+		local avgItemLevel = GetAverageItemLevel(); 4.0.1 ->
+		local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel(); 4.3.0 ->
+		local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvP = GetAverageItemLevel(); 6.2.0, 9.1.0 ->
+
+		local minItemLevel = C_PaperDollInfo.GetMinItemLevel(); 8.0.1 ->
+		]]--
+		Debug("__updateAverages:", waitLock)
+		local playerISum, playerQSum, inspectISum, inspectQSum = 0, 0, 0, 0
+
 		for i = 1, maxSlots do
-			raritySum = raritySum + inspectRarity[i]
-			iLvlSum = iLvlSum + inspectLevels[i]
-		end
-
-		local itemCount = #inspectLevels - 1 -- Remove shirt from calculatios
-		if not inspectOffhand then -- Offhand empty, probably using 2H weapon without Titan's Grip (Fury Warrior passive allowing you to dual-wield 2H weapons), but this is just a guess
-			itemCount = itemCount - 1
-		end
-
-		g["avg"]:SetFormattedText("%s%d%s", _G.ITEM_QUALITY_COLORS[math.floor(raritySum / math.max(itemCount, 1))].hex, math.floor(iLvlSum / math.max(itemCount, 1)), _G.FONT_COLOR_CODE_CLOSE)
-	end -- _updateAverageItemLevel
-	]]
-
-	local updateLockPlayer, updateLockInspect = false, false
-	function updateSlot(button) -- Slot was updated, check if we need to update the ilevel-text
-		local slotId = button:GetID()
-		local frame, unit
-		if (button:GetParent():GetName() == "PaperDollItemsFrame") then
-			frame, unit = f, "player"
-		elseif (button:GetParent():GetName()) == "InspectPaperDollItemsFrame" then
-			frame, unit = g, _G.InspectFrame.unit or "target"
-		end
-
-		if unit and slotId ~= 4 and slotId > 0 and slotId <= maxSlots then
-			local link = GetInventoryItemLink(unit, slotId)
-			if link then -- We have an item
-				local item = Item:CreateFromItemLink(link)
-				item:ContinueOnItemLoad(function() -- Information should be cached now
-					local _, _, enchantId = strsplit(":", strmatch(link, "|H(.-)|h"))
-					local itemQuality = item:GetItemQuality()
-					local inventoryType = item:GetInventoryType()
-					frame[slotId].itemQualityColor = item:GetItemQualityColor()
-
-					local itemLevel, currentUpgradeLevel, maxUpgradeLevel, currentEnchant, sockets = TooltipScanItem(link, (enchantId and enchantId ~= ""), false, slotId)
-					frame[slotId].itemLevel = itemLevel or item:GetCurrentItemLevel() or ""
-
-					-- Upgrades
-					frame[slotId].upgradeString = ""
-					if currentUpgradeLevel and maxUpgradeLevel and currentUpgradeLevel < maxUpgradeLevel then
-						frame[slotId].upgradeString = "|TInterface\\PetBattles\\BattleBar-AbilityBadge-Strong:0:0:0:0:32:32:2:30:2:30|t"
-					end
-
-					-- Enchant
-					frame[slotId].enchantString, frame[slotId].currentEnchant = "", ""
-					if enchantId and enchantId ~= "" then
-						frame[slotId].enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30|t"
-						frame[slotId].currentEnchant = currentEnchant and ("|T136244:0:0:0:0:32:32:2:30:2:30|t " .. currentEnchant) or ""
-					elseif db and db.enchantsTable and db.enchantsTable[slotId] then
-						if (slotId ~= 17) or (slotId == 17 and (inventoryType ~= 14 and inventoryType ~= 23)) then -- Check if not an Offhand of Offhand item is a Weapon, https://www.townlong-yak.com/framexml/8.2.0/Blizzard_APIDocumentation/ItemDocumentation.lua#438
-							frame[slotId].enchantString = "|T136244:0:0:0:0:32:32:2:30:2:30:221:0:0|t"
-						end
-					end
-
-					-- Sockets
-					frame[slotId].socketString, frame[slotId].currentSockets = "", ""
-					for t = 1, #sockets do
-						if sockets[t] then
-							frame[slotId].socketString = frame[slotId].socketString .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t"
-						end
-
-						local gemName, gemLink = GetItemGem(link, t)
-						if gemName then
-							local gemStat = TooltipScanItem(gemLink, nil, true, slotId)
-							local _, _, colorHex = string.find(gemLink, "|cff(%x*)")
-							if db.color and colorHex then
-								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|cff" .. colorHex .. "|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat .. "|r") or ""))
-							else
-								frame[slotId].currentSockets = strtrim(frame[slotId].currentSockets .. (gemStat and ("\n|T" .. sockets[t] .. ":0:0:0:0:32:32:2:30:2:30|t " .. gemStat) or ""))
-							end
-						end
-					end
-
-					-- Get the itemLevel-string
-					frame[slotId].finalString = getFinalString(slotId, frame[slotId].itemQualityColor)
-
-					-- Fill the itemLevel-string
-					frame[slotId].string:SetFormattedText(frame[slotId].finalString, frame[slotId].itemLevel, frame[slotId].upgradeString, frame[slotId].enchantString, frame[slotId].socketString)
-					-- New fix for the '...' in some of the strings in some cases
-					local w = frame[slotId].string:GetStringWidth() + 5 --math.max(frame[slotId].string:GetWidth(), frame[slotId].string:GetParent():GetWidth() + 2)
-					frame[slotId].string:SetWidth(w)
-					
-					if (unit == "player" and (not updateLockPlayer)) or (unit ~= "player" and (not updateLockInspect)) then
-						if unit == "player" then
-							updateLockPlayer = true
-						else
-							updateLockInspect = true
-						end
-						C_Timer.After(0, function() -- Fire on next frame instead of current frame
-							local totalIlvl, totalQlvl = 0, 0
-							local isOffhandEquipped = true
-							for z = 1, maxSlots do
-								if z ~= 4 then
-									if (frame[z].itemLevel ~= "") then
-										totalIlvl = totalIlvl + frame[z].itemLevel
-										totalQlvl = totalQlvl + itemQuality
-									elseif z == 17 then
-										isOffhandEquipped = false
-									end
-								end
-							end
-							local itemCountFix = (isOffhandEquipped == true) and 1 or 2 -- Remove Shirt or Shirt+Offhand
-							local finalAvgItemLevel = math.floor(totalIlvl / (maxSlots - itemCountFix))
-							local finalAvgQualityLevel = math.floor(totalQlvl / (maxSlots - itemCountFix))
-							if ((isSomeClassic) and unit == "player") or unit ~= "player" then
-								frame["avg"]:SetFormattedText("%s%d%s", _G.ITEM_QUALITY_COLORS[finalAvgQualityLevel].hex, finalAvgItemLevel, _G.FONT_COLOR_CODE_CLOSE)
-							end
-
-							if db.differenceColor then
-								for x = 1, maxSlots do
-									if x ~= 4 then
-										if (frame[x].itemLevel ~= "") then
-											local iLevelGap = (finalAvgItemLevel - frame[x].itemLevel)
-											local itemLevelColorCode = _G.GREEN_FONT_COLOR_CODE
-											if iLevelGap >= 10 and iLevelGap < 20 then
-												itemLevelColorCode = _G.ORANGE_FONT_COLOR_CODE
-											elseif iLevelGap >= 20 then
-												itemLevelColorCode = _G.RED_FONT_COLOR_CODE
-											end
-											frame[x].finalString = getFinalString(x, itemLevelColorCode, true)
-											frame[x].string:SetFormattedText(frame[x].finalString, frame[x].itemLevel, frame[x].upgradeString, frame[x].enchantString, frame[x].socketString)
-											local w = frame[x].string:GetStringWidth() + 5
-											frame[x].string:SetWidth(w)
-										end
-									end
-								end
-							end
-							if unit == "player" then
-								updateLockPlayer = false
-							else
-								updateLockInspect = false
-							end
-						end)
-					end
-					--[[
-					if unit ~= "player" then
-						inspectLevels[slotId] = frame[slotId].itemLevel or 0
-						inspectRarity[slotId] = (itemQuality == _G.LE_ITEM_QUALITY_HEIRLOOM and _G.LE_ITEM_QUALITY_RARE or (itemQuality or 0)) -- Downscale Heirlooms to Rare
-
-						if slotId == 17 and frame[slotId].itemLevel then -- Check if we have Offhand equipped
-							inspectOffhand = (frame[slotId].itemLevel > 0) and true or nil
-						end
-						_updateAverageItemLevel()
-					end
-					]]
-				end)
-			else -- No link, better reset stuff
-				frame[slotId].string:SetFormattedText("")
-				frame[slotId].itemLevel, frame[slotId].upgradeString = "", ""
-				frame[slotId].enchantString, frame[slotId].currentEnchant = "", ""
-				frame[slotId].socketString, frame[slotId].currentSockets = "", ""
-
-				--[[
-				if unit ~= "player" then
-					inspectLevels[slotId] = 0
-					inspectRarity[slotId] = 0
-
-					if slotId == 17 then
-						inspectOffhand = nil
-					end
-					_updateAverageItemLevel()
-				end
-				]]
+			if waitLock % 2 == 1 then -- waitLock == 1 or 3
+				playerISum = playerISum + f.itemLevels[i]
+				playerQSum = playerQSum + f.qualities[i]
+			end
+			if waitLock >= 2 then -- waitLock == 2 or 3
+				inspectISum = inspectISum + g.itemLevels[i]
+				inspectQSum = inspectQSum + g.qualities[i]
 			end
 		end
-	end -- updateSlot
-end -- updateSlot
 
-local lock -- Prevent multiple timers spawning
-local function OnShow(self, force) -- Refresh text strings on frame Show or when called
-	--print("OnShow", (self == f), (self == g), tostring(force))
-	if (force) or (not lock) then -- Check if locked or forced call from SlashCmd
-		lock = true
-		C_Timer.After(0, function() -- Fire on next frame instead of current frame
-			for slotId = 1, maxSlots do
-				if slotId ~= 4 then
-					if (force) then -- Calling from SlashCmd, settings might have changed, better reset links and get up to date finalString
-						local frame = (self == f) and "Character" or "Inspect"
-						updateSlot(_G[ frame..slotTable[slotId] ])
-						--self[slotId].finalString = getFinalString(slotId, self[slotId].itemQualityColor)
-					end
-
-					if self[slotId].itemLevel ~= nil and self[slotId].itemLevel ~= "" then
-						self[slotId].string:SetFormattedText(self[slotId].finalString, self[slotId].itemLevel, self[slotId].upgradeString, self[slotId].enchantString, self[slotId].socketString)
-						local w = math.max(self[slotId].string:GetWidth(), self[slotId].string:GetParent():GetWidth() + 2)
-						self[slotId].string:SetWidth(w)
-					else
-						self[slotId].string:SetFormattedText("")
-					end
-				end
+		if waitLock % 2 == 1 then
+			--local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel()
+			local slotCount = maxSlots - 1 -- Remove Shirt
+			if not f.isOffhandEquipped then
+				slotCount = slotCount - 1 -- Remove Offhand
 			end
-			lock = nil
-		end)
+			local playerAvgI = floor(playerISum / slotCount * 100 + .5) / 100
+			local playerAvgQ = floor(playerQSum / slotCount + .5)
+			f.averageItemLevel = playerAvgI
+			f.averageQuality = playerAvgQ
+			
+			Debug("  - Average (Player): |cnIQ%d:%.2f|r (%d/%d)\n ", playerAvgQ, playerAvgI, slotCount, maxSlots)
+		end
+
+		if waitLock >= 2 then
+			-- local equippedItemLevel = C_PaperDollInfo.GetInspectItemLevel(unit)
+			local slotCount = maxSlots - 1 -- Remove Shirt
+			if not g.isOffhandEquipped then
+				slotCount = slotCount - 1 -- Remove Offhand
+			end
+			local inspectAvgI = floor(inspectISum / slotCount * 100 + .5) / 100
+			local inspectAvgQ = floor(inspectQSum / slotCount + .5)
+			g.averageItemLevel = inspectAvgI
+			g.averageQuality = inspectAvgQ
+			Debug("  - Average (Inspect): |cnIQ%d:%.2f|r (%d/%d)\n ", inspectAvgQ, inspectAvgI, slotCount, maxSlots)
+		end
+
+		if db.differenceColor then
+			__reColor(waitLock)
+		end
+		waitLock = 0
 	end
-end -- OnShow
+
+	function __queueAverages(num) -- Queue up only once per frame
+		if waitLock < 3 and waitLock ~= num then -- This should allow queueing both Player (1) and Inspect (2) on the same frame
+			waitLock = waitLock + num
+			RunNextFrame(__updateAverages)
+		end
+	end
+end -- __queueAverages
+
+local updatePlayerSlot, updateInspectSlot
+local itemCache = {}
+local cacheHitCount, parseCount = 0, 0
+do -- _updateSlot
+	local function _updateSlot(itemSlot, observationSubject)
+		local slotId = itemSlot:GetID()
+		if slotId == 0 or slotId == 4 or slotId > maxSlots then
+			return
+		end
+
+		local parentFrame = (observationSubject == "player") and f or g
+
+		local slotItemLink = GetInventoryItemLink(observationSubject, slotId)
+
+		if not itemCache[observationSubject] then
+			itemCache[observationSubject] = {}
+		end
+		if itemCache[observationSubject][slotId] == slotItemLink then
+			cacheHitCount = cacheHitCount + 1
+			return
+		end
+		parseCount = parseCount + 1
+		itemCache[observationSubject][slotId] = slotItemLink
+
+		if (slotItemLink) then -- We have an item
+			Debug("=== _updateSlot %d %s (%d/%d)", slotId, itemSlot:GetName(), parseCount, cacheHitCount)
+
+			if slotId == 17 then
+				parentFrame.isOffhandEquipped = true
+				Debug("- isOffhandEquipped:", GREEN_FONT_COLOR:WrapTextInColorCode("YES!"))
+			end
+
+			--[[
+			local slotItemQuality = GetInventoryItemQuality(observationSubject, slotId)
+			Debug("--> Item: %s - Q: %s (%d)", slotItemLink, _G["ITEM_QUALITY" .. slotItemQuality .. "_DESC"], slotItemQuality)
+			]]
+
+			local item = Item:CreateFromItemLink(slotItemLink)
+			if item:IsItemEmpty() then
+				Print("ERROR", slotId)
+				parseCount = parseCount - 1
+				itemCache[observationSubject][slotId] = nil
+				return
+			end
+			Debug("- Item:CreateFromItemLink - Quality:", item:GetItemQuality())
+
+			-- Parse Tooltip
+			local itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo = __parseTooltip(slotItemLink, slotId)
+
+			-- Artifact Weapon fix for dual wielded Artifact Weapons
+			if slotId == 16 or slotId == 17 then
+				if item:GetItemQuality() == Enum.ItemQuality.Artifact then
+					parentFrame.isWeaponArtifact = true
+					parentFrame.artifactWeaponLevel = math.max(itemLevel, parentFrame.artifactWeaponLevel)
+
+					Debug("- Fixing Artifact Weapon item level: %d -> %d", itemLevel, parentFrame.artifactWeaponLevel)
+					itemLevel = parentFrame.artifactWeaponLevel
+				else
+					parentFrame.isWeaponArtifact = false
+					parentFrame.artifactWeaponLevel = 0
+				end
+			end
+
+			-- Build FinalString
+			local textItemLevel = __buildString(slotId, itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo)
+
+			-- Get FontString from the Pool
+			local itemTextString = __getString(itemSlot, parentFrame)
+			itemTextString:SetText(slotId)
+			itemTextString:Show()
+
+			-- Align text
+			if bottomItemSlots[slotId] then
+				itemTextString:SetJustifyH("CENTER")
+			else
+				if leftItemSlots[slotId] then
+					itemTextString:SetJustifyH("LEFT")
+				else
+					itemTextString:SetJustifyH("RIGHT")
+				end
+			end
+
+			-- Check Colors
+			if (not db.color) then
+				textItemLevel = format("%s", textItemLevel)
+			else
+				if (db.differenceColor) then
+					textItemLevel = format("|cnGREEN_FONT_COLOR:%s|r", textItemLevel)
+				else
+					textItemLevel = format("|cnIQ%d:%s|r", item:GetItemQuality(), textItemLevel)
+				end
+			end
+
+			-- Set text
+			itemTextString:SetText(textItemLevel)
+			itemTextString:SetWidth(itemSlot:GetWidth() * 1.5)
+			--itemTextString:SetTextToFit(textItemLevel)
+
+			--[[
+			-- Check Width
+			local fontstringWidth = itemTextString:GetWidth()
+			local originalWidth, fixRounds = fontstringWidth, 0
+			while itemTextString:IsTruncated() do
+				fontstringWidth = fontstringWidth + 1
+				fixRounds = fixRounds + 1
+				itemTextString:SetWidth(fontstringWidth)
+			end
+			if fixRounds > 0 then
+				Debug("- Width:", originalWidth, "->", fontstringWidth, "- Rounds:", fixRounds)
+			end
+			]]--
+
+			-- Change Heirloom quality to Rare in the average calculations
+			local itemQuality = item:GetItemQuality()
+			if itemQuality == Enum.ItemQuality.Heirloom then
+				itemQuality = Enum.ItemQuality.Rare -- 7 -> 3
+			end
+
+			-- Update Itemlevel and Quality for the slot
+			parentFrame.itemLevels[slotId] = itemLevel
+			parentFrame.qualities[slotId] = itemQuality
+
+			Debug("=== DONE\n ")
+
+			-- TODO
+			-- Style
+
+		else -- Empty slot
+			if slotId == 17 then
+				parentFrame.isOffhandEquipped = false
+				Debug("- isOffhandEquipped:", RED_FONT_COLOR:WrapTextInColorCode("NO!"))
+			end
+
+			-- Release FontString back to Pool
+			local i = 1
+			for activeText in parentFrame.pool:EnumerateActive() do
+				local point, relativeTo, relativePoint, offsetX, offsetY = activeText:GetPoint()
+
+				if relativeTo == itemSlot then
+					parentFrame.pool:Release(activeText)
+					Debug("- Releasing", itemSlot:GetName(), i, "/", parentFrame.pool:GetNumActive())
+					break
+				end
+				i = i + 1
+			end
+
+			-- Update Itemlevel and Quality for the slot
+			parentFrame.itemLevels[slotId] = 0
+			parentFrame.qualities[slotId] = 0
+		end
+
+		-- Queue update to the Average values
+		__queueAverages(observationSubject == "player" and 1 or 2)
+	end
+
+	function updatePlayerSlot(itemSlot)
+		_updateSlot(itemSlot, "player")
+	end
+
+	function updateInspectSlot(itemSlot)
+		local inspectUnit = InspectFrame.unit or "target"
+
+		_updateSlot(itemSlot, inspectUnit)
+	end
+end -- _updateSlot
 
 local function OnEvent(self, event, ...) -- Event handler
 	if event == "ADDON_LOADED" then
 		if (...) == ADDON_NAME then
-			_G.iLevelSetting = initDB(DBDefaults, _G.iLevelSetting)
-			db = _G.iLevelSetting
+			iLevelSetting = initDB(DBDefaults, iLevelSetting)
+			db = iLevelSetting
 
 			self:RegisterEvent("PLAYER_LOGIN")
-			--self:RegisterEvent("INSPECT_READY")
+
 		elseif (...) == "Blizzard_InspectUI" then
 			self:UnregisterEvent(event)
 
-			if not db.disableInspect then
-				g = CreateFrame("Frame", nil, _G.InspectPaperDollFrame) -- iLevel number frame for Inspect
-				g:SetScript("OnShow", OnShow)
-				createStrings(g)
-				-- https://www.townlong-yak.com/framexml/8.2.0/Blizzard_InspectUI/InspectPaperDollFrame.lua#159
-				hooksecurefunc("InspectPaperDollItemSlotButton_Update", updateSlot)
+			if (not db.disableInspect) then -- Setup 'g'
+				--g = CreateFrame("Frame", nil, InspectPaperDollFrame) -- iLevel number frame for Inspect
+				-- InspectPaperDollFrame was too low frameLevel and Fontstrings were hidden behind the slot buttons.
+				-- With this parenting, we don't have to hardcode the frameLevel or raise the frameStrata.
+				g = CreateFrame("Frame", nil, InspectPaperDollItemsFrame)
+				g.itemLevels = {}
+				g.qualities = {}
+				for slot = 1, maxSlots do
+					g.itemLevels[slot] = 0
+					g.qualities[slot] = 0
+				end
+				g.isOffhandEquipped = false
+				g.isWeaponArtifact = false
+				g.artifactWeaponLevel = 0
+				g.averageItemLevel = 0
+				g.averageQuality = Enum.ItemQuality.Poor
+
+				g.pool = CreateFontStringPool(g, "OVERLAY", nil, "GameFontNormalOutline", __poolRestterFunc)
+
+				-- https://www.townlong-yak.com/framexml/67451/Blizzard_InspectUI/InspectPaperDollFrame.lua#161 // 12.0.5
+				hooksecurefunc("InspectPaperDollItemSlotButton_Update", updateInspectSlot)
 			end
 		end
+
 	elseif event == "PLAYER_LOGIN" then
 		self:UnregisterEvent(event)
 
-		f:SetScript("OnShow", OnShow)
-		createStrings(f)
-		-- https://www.townlong-yak.com/framexml/8.2.0/PaperDollFrame.lua#1610
-		hooksecurefunc("PaperDollItemSlotButton_Update", updateSlot)
-	--elseif event == "INSPECT_READY" then
-	--	for slotId = 1, maxSlots do
-	--		if slotId ~= 4 then
-	--			updateSlot(_G["Inspect" .. slotTable[slotId]])
-	--		end
-	--	end
+		-- https://www.townlong-yak.com/framexml/67451/Blizzard_UIPanels_Game/PaperDollFrame.lua#1693 // 12.0.5
+		hooksecurefunc("PaperDollItemSlotButton_Update", updatePlayerSlot)
+
 	end
 end -- OnEvent
 f:SetScript("OnEvent", OnEvent)
+f:RegisterEvent("ADDON_LOADED")
 
 SLASH_ILEVEL1 = "/ilevel"
-SlashCmdList.ILEVEL = function(...)
-	local showHelp, showInfo = true, true
-	if (...) == "0" or (...) == "1" or (...) == "2" or (...) == "inside" or (...) == "color" or (...) == "tooltip" or (...) == "difference" or (...) == "inspect" or (...) == "resetenchants" or (...) == "enchants" or strmatch((...), "enchants %d+") or (...) == "debug" then
-		showHelp = false
-		-- Save settings
-		if (...) == "inside" then
-			db.inside = not db.inside
-		elseif (...) == "color" then
-			db.color = not db.color
-		elseif (...) == "tooltip" then
-			db.tooltips = not db.tooltips
-			for i = 1, maxSlots do
-				if i ~= 4 then
-					f[i]:EnableMouse(db.tooltips)
-					if g then
-						g[i]:EnableMouse(db.tooltips)
-					end
-				end
-			end
-		elseif (...) == "difference" then
-			db.differenceColor = not db.differenceColor
-		elseif (...) == "inspect" then
-			db.disableInspect = not db.disableInspect
-		elseif (...) == "resetenchants" then
-			showInfo = false
-			for i = 1, 17 do
-				db.enchantsTable[i] = (DBDefaults.enchantsTable[i]) and true or false
-			end
-			Print("Show missing Enchants for slots has been reseted to defaults.")
-		elseif (...) == "enchants" then
-			showInfo = false
+
+local SlashHandlers = {
+	["0"] = function()
+		db.setting = 0
+	end,
+	["1"] = function()
+		db.setting = 1
+	end,
+	["2"] = function()
+		db.setting = 2
+	end,
+	["inside"] = function()
+		db.inside = not db.inside
+	end,
+	["color"] = function()
+		db.color = not db.color
+	end,
+	["colormode"] = function()
+		db.differenceColor = not db.differenceColor
+	end,
+	["inspect"] = function()
+		db.disableInspect = not db.disableInspect
+	end,
+	["resetenchants"] = function()
+		for i = 1, 17 do
+			db.enchantsTable[i] = (DBDefaults.enchantsTable[i]) and true or false
+		end
+		Print("Show missing Enchants for slots has been reseted to defaults.")
+		return true
+	end,
+	["enchants"] = function(inputNumber)
+		local slotId = tonumber(inputNumber)
+		if not slotId then
 			Print("Show missing Enchants for slots:")
 			for i = 1, 17 do
 				if i ~= 4 then
-					Print("  %s%d%s - %s%s%s (%s)",
-						_G.NORMAL_FONT_COLOR_CODE, i, _G.FONT_COLOR_CODE_CLOSE,
-						db.enchantsTable[i] and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.enchantsTable[i] and "True" or "False", _G.FONT_COLOR_CODE_CLOSE, _G[strupper(slotTable[i])])
+					Print("  %s - %s (%s)",
+						NORMAL_FONT_COLOR:WrapTextInColorCode(i),
+						db.enchantsTable[i] and GREEN_FONT_COLOR:WrapTextInColorCode("True") or RED_FONT_COLOR:WrapTextInColorCode("False"),
+						_G[strupper(slotTable[i])]
+					)
 				end
 			end
-		elseif strmatch((...), "enchants %d+") then
-			showInfo = false
-			local n = tonumber(strmatch((...), "enchants (%d+)"))
-			if not n or n <= 0 or n > 17 or n == 4 then
-				Print("Give number between %s1-3%s or %s5-17%s, you gave %s%s%s",
-					_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-					_G.NORMAL_FONT_COLOR_CODE, _G.FONT_COLOR_CODE_CLOSE,
-					_G.NORMAL_FONT_COLOR_CODE, tostring(n), _G.FONT_COLOR_CODE_CLOSE
+		else
+			if slotId <= 0 or slotId > 17 or slotId == 4 then
+				Print("Give number between %s or %s, you gave %s",
+					NORMAL_FONT_COLOR:WrapTextInColorCode("1-3"),
+					NORMAL_FONT_COLOR:WrapTextInColorCode("5-17"),
+					NORMAL_FONT_COLOR:WrapTextInColorCode(tostring(slotId))
 				)
 			else
-				db.enchantsTable[n] = not db.enchantsTable[n]
-				Print("Show missing Enchants for slot %s%d%s (%s) has been set to %s%s%s",
-					_G.NORMAL_FONT_COLOR_CODE, n, _G.FONT_COLOR_CODE_CLOSE, _G[strupper(slotTable[n])],
-					db.enchantsTable[n] and _G.GREEN_FONT_COLOR_CODE or _G.RED_FONT_COLOR_CODE, db.enchantsTable[n] and "True" or "False", _G.FONT_COLOR_CODE_CLOSE)
+				db.enchantsTable[slotId] = not db.enchantsTable[slotId]
+				Print("Show missing Enchants for slot %s (%s) has been set to %s",
+					NORMAL_FONT_COLOR:WrapTextInColorCode(slotId),
+					_G[strupper(slotTable[slotId])],
+					db.enchantsTable[slotId] and GREEN_FONT_COLOR:WrapTextInColorCode("True") or RED_FONT_COLOR:WrapTextInColorCode("False")
+				)
 			end
-		elseif (...) == "debug" then
-			db.debug = not db.debug
-			Print("Debug:", db.debug and _G.GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED") or _G.RED_FONT_COLOR:WrapTextInColorCode("DISABLED"))
-		else
-			db.setting = tonumber((...))
+		end
+		return true
+	end,
+	["help"] = function()
+		Print("%s ( 0 | 1 | 2 | inside | color | colormode | enchants [#] )", NORMAL_FONT_COLOR:WrapTextInColorCode(SLASH_ILEVEL1))
+		Print("%s - Only show item levels.", NORMAL_FONT_COLOR:WrapTextInColorCode("0"))
+		Print("%s - Show item levels and upgrades.", NORMAL_FONT_COLOR:WrapTextInColorCode("1"))
+		Print("%s - Show item levels, upgrades and enchants and gems.", NORMAL_FONT_COLOR:WrapTextInColorCode("2"))
+		Print("%s - Change anchor point between %s and %s.",
+			NORMAL_FONT_COLOR:WrapTextInColorCode("inside"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode("INSIDE"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode("OUTSIDE")
+		)
+		Print("%s - %s/%s coloring.",
+			NORMAL_FONT_COLOR:WrapTextInColorCode("color"),
+			GREEN_FONT_COLOR:WrapTextInColorCode("ENABLE"),
+			RED_FONT_COLOR:WrapTextInColorCode("DISABLE")
+		)
+		Print("%s - Change coloring based on item %s and itemlevel %s to averate item level.",
+			NORMAL_FONT_COLOR:WrapTextInColorCode("colormode"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode("RARITY"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode("DIFFERENCE")
+		)
+		Print("%s - %s/%s showing itemLevels on InspectFrame (Requires %s to take effect).",
+			NORMAL_FONT_COLOR:WrapTextInColorCode("inspect"),
+			GREEN_FONT_COLOR:WrapTextInColorCode("ENABLE"),
+			RED_FONT_COLOR:WrapTextInColorCode("DISABLE"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode("/reloadui")
+		)
+		Print([=[%s - %s/%s show missing Enchants for itemslot #.
+- Ommit # to list itemslots and their current settings.]=],
+			NORMAL_FONT_COLOR:WrapTextInColorCode("enchants [#]"),
+			GREEN_FONT_COLOR:WrapTextInColorCode("ENABLE"),
+			RED_FONT_COLOR:WrapTextInColorCode("DISABLE")
+		)
+		Print("%s - Reset %s -settings to defaults.",
+			NORMAL_FONT_COLOR:WrapTextInColorCode("resetenchants"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode("Show missing Enchants")
+		)
+	end,
+	["debug"] = function()
+		db.debug = not db.debug
+		Print("Debug:", db.debug and GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED") or RED_FONT_COLOR:WrapTextInColorCode("DISABLED"))
+	end
+}
+
+SlashCmdList.ILEVEL = function(text)
+	local command, params = strsplit(" ", text, 2)
+
+	if SlashHandlers[command] then
+		local skipInfo = SlashHandlers[command](params)
+		Debug("/Slash", command, params, skipInfo)
+
+		if not skipInfo then
+			Print("Current settings: %s / %s / C: %s / I: %s",
+				NORMAL_FONT_COLOR:WrapTextInColorCode(tostring(db.setting)),
+				NORMAL_FONT_COLOR:WrapTextInColorCode(db.inside and "INSIDE" or "OUTSIDE"),
+				NORMAL_FONT_COLOR:WrapTextInColorCode(db.color and (db.differenceColor and "DIFFERENCE" or "RARITY") or "DEFAULT"),
+				db.disableInspect and RED_FONT_COLOR:WrapTextInColorCode("DISABLED") or GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED")
+			)
 		end
 
-		-- Force changes
-		OnShow(f, true)
-		anchorStrings(f)
-		if g then
-			OnShow(g, true)
-			anchorStrings(g)
+		-- Reset Cache so we get to update the itemSlots
+		cacheHitCount = 0
+		parseCount = 0
+		wipe(itemCache)
+		for slot = 1, maxSlots do
+			local itemSlot = _G["Character" .. slotTable[slot] ]
+			if itemSlot then
+				PaperDollItemSlotButton_Update(itemSlot)
+			end
 		end
-	end
-	if showHelp then
-		Print([=[%s ( 0 | 1 | 2 | inside | color | tooltip | difference | enchants [#] )
- %s - Only show item levels.
- %s - Show item levels and upgrades.
- %s - Show item levels, upgrades and enchants and gems.
- %s - Change anchor point between INSIDE and OUTSIDE.
- %s - Change coloring between RARITY and DEFAULT.
- %s - ENABLE/DISABLE show Enchant/Gem-tooltips.
-   - Works only when setting is %s and anchor is set to %s.
- %s - ENABLE/DISABLE coloring based on itemlevel difference to averate item level.
- %s - ENABLE/DISABLE showing itemLevels on IspectFrame (Requires %s to take effect).
- %s - ENABLE/DISABLE show missing Enchants for slot #.
-   - Ommit # to list slots and their current settings.
- %s - Reset 'Show missing Enchants' -settings to defaults.]=],
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(SLASH_ILEVEL1),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("0"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("1"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("2"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("inside"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("color"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("tooltip"),
-				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("2"),
-				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("OUTSIDE"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("difference"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("inspect"),
-				_G.NORMAL_FONT_COLOR:WrapTextInColorCode("/reloadui"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("enchants [#]"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode("resetenchants")
+		if InspectPaperDollFrame then
+			InspectPaperDollFrame_UpdateButtons()
+		end
+	else
+		Print("Current settings: %s / %s / C: %s / I: %s",
+			NORMAL_FONT_COLOR:WrapTextInColorCode(tostring(db.setting)),
+			NORMAL_FONT_COLOR:WrapTextInColorCode(db.inside and "INSIDE" or "OUTSIDE"),
+			NORMAL_FONT_COLOR:WrapTextInColorCode(db.color and (db.differenceColor and "DIFFERENCE" or "RARITY") or "DEFAULT"),
+			db.disableInspect and RED_FONT_COLOR:WrapTextInColorCode("DISABLED") or GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED")
 		)
-	end
-	if showInfo then
-		Print("Current settings: %s / %s / C: %s / TT: %s / I: %s",
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(tostring(db.setting)),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(db.inside and "INSIDE" or "OUTSIDE"),
-			_G.NORMAL_FONT_COLOR:WrapTextInColorCode(db.differenceColor and "DIFFERENCE" or (db.color and "RARITY" or "DEFAULT")),
-			db.tooltips and _G.GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED") or _G.RED_FONT_COLOR:WrapTextInColorCode("DISABLED"),
-			db.disableInspect and _G.RED_FONT_COLOR:WrapTextInColorCode("DISABLED") or _G.GREEN_FONT_COLOR:WrapTextInColorCode("ENABLED")
-			)
+		Print("Use %s for help",
+			NORMAL_FONT_COLOR:WrapTextInColorCode(SLASH_ILEVEL1 .. " help")
+		)
 	end
 end

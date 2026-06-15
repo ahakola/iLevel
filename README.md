@@ -9,16 +9,14 @@ I know there are 13 of these addons in a dozen, but this is my version. While le
 ---
 
 ```
-/ilevel ( 0 | 1 | 2 | inside | color | tooltip |  difference | inspect | enchants [#] | resetenchants )
+/ilevel ( 0 | 1 | 2 | inside | color | colormode | inspect | enchants [#] | resetenchants )
 
 0 - Only show item levels.
 1 - Show item levels and upgrades.
 2 - Show item levels, upgrades and enchants and gems.
 inside - Change anchoring of the item levels between INSIDE and OUTSIDE of the slot icons.
-color - Change the coloring of the itemlevel texts between DEFAULT and RARITY coloring.
-tooltip - ENABLE/DISABLE show Enchant/Gem-tooltips.
-   - Works only when setting is 2 and anchor is set to OUTSIDE.
-difference - ENABLE/DISABLE coloring based on itemlevel difference to averate item level.
+color - ENABLE/DISABLE coloring.
+colormode - Change coloring based on item RARITY and itemlevel DIFFERENCE to averate item level.
 inspect - ENABLE/DISABLE showing itemLevels on IspectFrame (Requires /reloadui to take effect).
 enchants [#] - ENABLE/DISABLE show missing Enchants for slot number #.
    - Ommit # to list slot numbers and their current settings.
@@ -27,7 +25,8 @@ resetenchants - reset "Show missing Enchants for slots" -settings back to defaul
 
 ---
 
-* NEW v.2.13: Added option to color the items based on the item's itemlevel difference to your average itemlevel. If item's itemlevel is below average less than 10 levels it will be colored green, 10-19 levels it will be colored orange and 20 or more levels it will be colored red. Also added support for Wrath Classic.
+* NEW v3.0: Complete rewrite of the addon! Should be more accurate on detecting itemlevels and different type of gems and other socketables.
+* NEW v2.13: Added option to color the items based on the item's itemlevel difference to your average itemlevel. If item's itemlevel is below average less than 10 levels it will be colored green, 10-19 levels it will be colored orange and 20 or more levels it will be colored red. Also added support for Wrath Classic.
 * NEW v2.3: Added option to show tooltips for Enchants and Gems when hovering over the itemlevel text (N.B.: This feature is **OFF** by default). Also added option to enable/disable the missing enchant warning per itemslot. These are only warnings of missing enchants, the addon will still show all applied enchants for all itemslots like before. By default the addon will show warnings for BfA enchantable itemslots.
 * NEW v2.0: Rewrote the addon. The addon should detect all sockets (except Azerite Essences) without hardcoding and the addon should also detect all enchants, but only shows missing enchants for the slots with BfA enchants.
 * NEW v1.18: Fixed Offhand Artifacts. Added Average itemlevel text for InspectFrame. Added option to color itemlevel texts with the color of itemrarity instead of default color.
