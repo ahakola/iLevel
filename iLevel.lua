@@ -728,9 +728,6 @@ do -- _updateSlot
 
 			Debug("=== DONE\n ")
 
-			-- TODO
-			-- Style
-
 		else -- Empty slot
 			if slotId == 17 then
 				parentFrame.isOffhandEquipped = false
