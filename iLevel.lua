@@ -268,6 +268,7 @@ do
 
 		local S_UPGRADE_LEVEL = "^" .. gsub(ITEM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)") -- "Upgrade Level: %d/%d"
 		local S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT = "^" .. gsub(HEIRLOOM_UPGRADE_TOOLTIP_FORMAT, "%%d", "(%%d+)") -- "Heirloom Upgrade Level: %d/%d"
+		local S_PROFESSIONS_CRAFTING_QUALITY = "^" .. gsub(PROFESSIONS_CRAFTING_QUALITY, "%%s", "(%.+)") -- "Quality: %s"
 
 		local itemLevel, currentUpgradeLevel, maxUpgradeLevel = 0, 0, 0
 		local gemInfo = ""
@@ -318,6 +319,14 @@ do
 
 			-- AzeriteEssencePower
 			--elseif line.type == Enum.TooltipDataLineType.AzeriteEssencePower then -- 5
+
+			-- ProfessionCraftingQuality
+			elseif line.type == Enum.TooltipDataLineType.ProfessionCraftingQuality then-- 12
+				-- Example: leftText: "Quality: [icon]"
+				--local q = strmatch(line.leftText, S_PROFESSIONS_CRAFTING_QUALITY)
+				--Debug("    - quality:", q, gsub(q, "|", "||"))
+				local qA = strmatch(line.leftText, "A:([%w-]+):")
+				Debug("    - quality:", qA, CreateAtlasMarkup(qA, 0, 0))
 
 			-- GemSocketEnchantment
 			--elseif line.type == Enum.TooltipDataLineType.GemSocketEnchantment then -- 30
