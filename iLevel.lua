@@ -318,13 +318,28 @@ do
 				itemLevel = line.itemLevel
 				Debug("    - itemlevel:", itemLevel)
 
+			-- ItemUpgradeLevel
+			elseif line.type == Enum.TooltipDataLineType.ItemUpgradeLevel then -- 32
+				-- Example:
+				--[[
+					leftText: "Upgrade Level: Myth 6/6"
+					maxLevel: 6
+					currentLevel: 6
+					trackStringID: 978
+				]]--
+				currentUpgradeLevel = line.currentLevel
+				maxUpgradeLevel = line.maxLevel
+				Debug("    - upgradeLevel: %s / %s (lineType)", currentUpgradeLevel, maxUpgradeLevel)
+
+			-- ItemQuality
+			--elseif line.type == Enum.TooltipDataLineType.ItemQuality then -- 35
+
 			-- Debug for possibly interesting stuff
 			else
 				local interestingTypes = {
 					[4] = true, -- AzeriteEssenceSlot
 					[5] = true, -- AzeriteEssencePower
 					[30] = true, -- GemSocketEnchantment
-					[32] = true, -- ItemUpgradeLevel
 					[35] = true, -- ItemQuality
 				}
 				if interestingTypes[line.type] then
@@ -335,18 +350,18 @@ do
 					)
 					--assert(false, "Please report this in a new issue ticket either at Curseforge or Github:\n" .. link .. "\n" .. _tableToString(line))
 				end
-			end
 
-			-- Upgrade info
-			if line.leftText then
-				if strmatch(line.leftText, S_UPGRADE_LEVEL) then
-					currentUpgradeLevel, maxUpgradeLevel = strmatch(line.leftText, S_UPGRADE_LEVEL)
+				-- Upgrade info
+				if line.leftText then
+					if strmatch(line.leftText, S_UPGRADE_LEVEL) then
+						currentUpgradeLevel, maxUpgradeLevel = strmatch(line.leftText, S_UPGRADE_LEVEL)
 
-					Debug("    - upgradeLevel: %s / %s", currentUpgradeLevel, maxUpgradeLevel)
-				elseif strmatch(line.leftText, S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT) then
-					currentUpgradeLevel, maxUpgradeLevel = strmatch(line.leftText, S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT)
+						Debug("    - upgradeLevel: %s / %s", currentUpgradeLevel, maxUpgradeLevel)
+					elseif strmatch(line.leftText, S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT) then
+						currentUpgradeLevel, maxUpgradeLevel = strmatch(line.leftText, S_HEIRLOOM_UPGRADE_TOOLTIP_FORMAT)
 
-					Debug("    - upgradeLevel: %s / %s (Heirloom)", currentUpgradeLevel, maxUpgradeLevel)
+						Debug("    - upgradeLevel: %s / %s (Heirloom)", currentUpgradeLevel, maxUpgradeLevel)
+					end
 				end
 			end
 		end
