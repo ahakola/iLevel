@@ -313,6 +313,15 @@ do
 				end
 				Debug("    - GemSocket:", line.gemIcon, line.socketType)
 
+			-- AzeriteEssenceSlot
+			--elseif line.type == Enum.TooltipDataLineType.AzeriteEssenceSlot then -- 4
+
+			-- AzeriteEssencePower
+			--elseif line.type == Enum.TooltipDataLineType.AzeriteEssencePower then -- 5
+
+			-- GemSocketEnchantment
+			--elseif line.type == Enum.TooltipDataLineType.GemSocketEnchantment then -- 30
+
 			-- Itemlevel
 			elseif line.type == Enum.TooltipDataLineType.ItemLevel then -- 31
 				itemLevel = line.itemLevel
