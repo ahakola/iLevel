@@ -272,6 +272,7 @@ do
 
 		local itemLevel, currentUpgradeLevel, maxUpgradeLevel = 0, 0, 0
 		local gemInfo = ""
+		local socketIndex, gemPending = 0, nil
 
 		-- Parse Tooltip
 		--/tinspect C_TooltipInfo.GetHyperlink(GetInventoryItemLink("player", 1))
@@ -282,6 +283,7 @@ do
 		for i, line in ipairs(tooltipData.lines) do
 			-- GemSockets
 			if line.type == Enum.TooltipDataLineType.GemSocket then -- 3
+				socketIndex = socketIndex + 1
 				if line.gemIcon then
 					-- Example: 1995542 (gemItemID 153708)
 					gemInfo = gemInfo .. format("|T%d:0:0:0:" .. offsetY .. ":32:32:2:30:2:30|t", line.gemIcon)
@@ -309,6 +311,9 @@ do
 						auctionhouse-icon-socket
 						character-emptysocket
 					]]--
+					-- gemIcon is also nil while a socketed gem is still loading
+					gemPending = gemPending or C_Item.GetItemGemID(link, socketIndex)
+
 					gemInfo = gemInfo .. CreateAtlasMarkup("character-emptysocket", 0, 0, offsetX, offsetY) -- Fallback choise
 
 				end
@@ -394,8 +399,10 @@ do
 		enchantId = tonumber(enchantId)
 
 		Debug("  __parseTooltip %s -> I: %d, U: %d / %d, E: %d, G: %s", link, itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo)
-		tooltipCache[link] = { itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo }
-		return itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo
+		if not gemPending then
+			tooltipCache[link] = { itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo }
+		end
+		return itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo, gemPending
 	end
 end -- __parseTooltip
 
@@ -615,6 +622,7 @@ end -- __queueAverages
 
 local updatePlayerSlot, updateInspectSlot
 local itemCache = {}
+local gemWatch = {}
 local cacheHitCount, parseCount = 0, 0
 do -- _updateSlot
 	local function _updateSlot(itemSlot, observationSubject)
@@ -660,7 +668,21 @@ do -- _updateSlot
 			Debug("- Item:CreateFromItemLink - Quality:", item:GetItemQuality())
 
 			-- Parse Tooltip
-			local itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo = __parseTooltip(slotItemLink, slotId)
+			local itemLevel, currentUpgradeLevel, maxUpgradeLevel, enchantId, gemInfo, gemPending = __parseTooltip(slotItemLink, slotId)
+
+			local watchKey = gemPending and (observationSubject .. ":" .. slotId .. ":" .. gemPending)
+			if watchKey and not gemWatch[watchKey] then
+				-- Watched once per slot and gem, so a reparse that is still pending cannot loop
+				itemCache[observationSubject][slotId] = nil
+				gemWatch[watchKey] = true
+				Item:CreateFromItemID(gemPending):ContinueOnItemLoad(function()
+					if observationSubject == "player" then
+						PaperDollItemSlotButton_Update(itemSlot)
+					elseif InspectFrame.unit == observationSubject then
+						InspectPaperDollItemSlotButton_Update(itemSlot)
+					end
+				end)
+			end
 
 			-- Artifact Weapon fix for dual wielded Artifact Weapons
 			if slotId == 16 or slotId == 17 then
