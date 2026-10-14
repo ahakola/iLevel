@@ -1,4 +1,4 @@
-## Interface: 120100, 50504, 38002
+## Interface: 120105, 50504, 38002
 ## Author: Sanex (Arathor EU)
 ## Title: iLevel
 ## Version: @project-version@
